@@ -136,10 +136,66 @@ const StatCard = ({ icon: Icon, label, value, iconColor }: any) => (
   </div>
 )
 
-const EstadoDropdown = ({ postulanteId, estadoActual, supabase }: { postulanteId: string, estadoActual: string, supabase: any }) => {
+// --- COMPONENTE: SELECTOR RADIO UIVERSE (Para el Modal) ---
+const EstadoRadio = ({ postulanteId, estadoActual, supabase, layout = 'col', onStatusChange }: { postulanteId: string, estadoActual: string, supabase: any, layout?: 'col' | 'row', onStatusChange?: (nuevoEstado: string) => void }) => {
+  const [estado, setEstado] = useState(estadoActual || 'Nuevo')
+  const [isUpdating, setIsUpdating] = useState(false)
+
+  // Efecto para sincronizar si se cambia desde fuera
+  useEffect(() => { setEstado(estadoActual || 'Nuevo') }, [estadoActual])
+
+  const handleChange = async (nuevoEstado: string) => {
+    setEstado(nuevoEstado)
+    setIsUpdating(true)
+    try {
+      await supabase.from('cv_postulantes').update({ estado: nuevoEstado }).eq('id', postulanteId)
+      toast.success(`Estado actualizado a ${nuevoEstado}`)
+      if (onStatusChange) onStatusChange(nuevoEstado) // Actualiza el estado principal instantáneamente
+    } catch (error) {
+      toast.error('Error al actualizar el estado')
+      setEstado(estadoActual)
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  const options = [
+    { name: 'Nuevo', classes: 'border-blue-500 peer-checked:bg-blue-500 peer-hover:shadow-blue-500/50 peer-checked:shadow-blue-500/50 text-blue-700' },
+    { name: 'En Proceso', classes: 'border-amber-500 peer-checked:bg-amber-500 peer-hover:shadow-amber-500/50 peer-checked:shadow-amber-500/50 text-amber-700' },
+    { name: 'Contratado', classes: 'border-emerald-500 peer-checked:bg-emerald-500 peer-hover:shadow-emerald-500/50 peer-checked:shadow-emerald-500/50 text-emerald-700' },
+    { name: 'Descartado', classes: 'border-red-500 peer-checked:bg-red-500 peer-hover:shadow-red-500/50 peer-checked:shadow-red-500/50 text-red-700' }
+  ]
+
+  return (
+    <div className={`flex ${layout === 'col' ? 'flex-col space-y-2.5' : 'flex-row flex-wrap gap-4 bg-gray-50/80 p-2.5 rounded-2xl border border-gray-100'}`}>
+      {options.map((opt) => (
+        <label key={opt.name} className={`relative flex items-center cursor-pointer group ${isUpdating ? 'opacity-50 pointer-events-none' : ''}`}>
+          <input 
+            className="sr-only peer" 
+            name={`status-${postulanteId}-${layout}`} 
+            type="radio" 
+            value={opt.name}
+            checked={estado === opt.name}
+            onChange={() => handleChange(opt.name)}
+          />
+          <div className={`w-5 h-5 bg-transparent border-2 rounded-full peer-hover:shadow-lg peer-checked:shadow-lg transition duration-300 ease-in-out ${opt.classes.split(' text-')[0]}`} />
+          <span className={`ml-2 text-[11px] font-bold uppercase tracking-wider transition-colors ${estado === opt.name ? opt.classes.split(' ').pop() : 'text-slate-400 group-hover:text-slate-600'}`}>
+            {opt.name}
+          </span>
+        </label>
+      ))}
+    </div>
+  )
+}
+
+// --- COMPONENTE: DROPDOWN DE ESTADO (Para la Tabla Principal) ---
+const EstadoDropdown = ({ postulanteId, estadoActual, supabase, onStatusChange }: { postulanteId: string, estadoActual: string, supabase: any, onStatusChange?: (nuevoEstado: string) => void }) => {
   const [estado, setEstado] = useState(estadoActual || 'Nuevo')
   const [isOpen, setIsOpen] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
+
+  // Sincronizar si el estado cambia desde afuera (ej. desde el modal)
+  useEffect(() => { setEstado(estadoActual || 'Nuevo') }, [estadoActual])
 
   const opciones = ['Nuevo', 'En Proceso', 'Contratado', 'Descartado']
 
@@ -165,6 +221,7 @@ const EstadoDropdown = ({ postulanteId, estadoActual, supabase }: { postulanteId
     try {
       await supabase.from('cv_postulantes').update({ estado: nuevoEstado }).eq('id', postulanteId)
       toast.success(`Estado actualizado a ${nuevoEstado}`)
+      if (onStatusChange) onStatusChange(nuevoEstado) // Actualiza el estado principal instantáneamente
     } catch (error) {
       toast.error('Error al actualizar el estado')
       setEstado(estadoActual)
@@ -217,7 +274,6 @@ export default function AdminDashboard() {
   const [notaLocal, setNotaLocal] = useState('')
   const [guardandoNota, setGuardandoNota] = useState(false)
 
-  // VERIFICAR SESIÓN AL INICIAR
   useEffect(() => {
     const isAuthed = sessionStorage.getItem('ruag_admin_auth')
     if (isAuthed === 'true') {
@@ -226,10 +282,8 @@ export default function AdminDashboard() {
     setAuthChecking(false)
   }, [])
 
-  // CARGAR DATOS SOLO SI ESTÁ AUTENTICADO
   useEffect(() => {
     if (!isAuthenticated) return;
-
     fetchData()
     const channel = supabase
       .channel('cv_realtime')
@@ -240,14 +294,11 @@ export default function AdminDashboard() {
     return () => { supabase.removeChannel(channel) }
   }, [isAuthenticated])
 
-  // FUNCIÓN PARA LOGIN
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault()
     setIsAuthenticating(true)
-    
-    // Simulamos un pequeño tiempo de carga para el efecto moderno
     setTimeout(() => {
-      if (passInput === 'RUAG2026') { // Contraseña maestra
+      if (passInput === 'RUAG2026') { 
         sessionStorage.setItem('ruag_admin_auth', 'true')
         setIsAuthenticated(true)
         toast.success('Acceso autorizado. Bienvenido.')
@@ -295,7 +346,13 @@ export default function AdminDashboard() {
     setGuardandoNota(true)
     try {
       await supabase.from('cv_postulantes').update({ notas_internas: notaLocal }).eq('id', previewData.id)
+      
+      // Actualizamos los datos del modal
       setPreviewData({...previewData, notas_internas: notaLocal})
+      
+      // Actualizamos la tabla principal al instante para no tener que refrescar
+      setPostulantes(postulantes.map(p => p.id === previewData.id ? { ...p, notas_internas: notaLocal } : p))
+      
       toast.success('Nota interna guardada con éxito')
     } catch (error) {
       toast.error('Hubo un error al guardar la nota')
@@ -307,6 +364,16 @@ export default function AdminDashboard() {
   const abrirModal = (p: Postulante) => {
     setPreviewData(p)
     setNotaLocal(p.notas_internas || '')
+  }
+
+  // --- SINCRONIZACIÓN DEL ESTADO AL INSTANTE ---
+  const handleEstadoChangeGlobal = (id: string, nuevoEstado: string) => {
+    // Si cambia en la tabla, actualiza la lista principal
+    setPostulantes(postulantes.map(p => p.id === id ? { ...p, estado: nuevoEstado } : p))
+    // Si el modal está abierto y es el mismo usuario, actualiza el modal también
+    if (previewData && previewData.id === id) {
+      setPreviewData({ ...previewData, estado: nuevoEstado })
+    }
   }
 
   const filteredData = postulantes.filter(p => {
@@ -326,50 +393,21 @@ export default function AdminDashboard() {
     window.open(`https://wa.me/${numFinal}?text=${encodeURIComponent(mensaje)}`, '_blank')
   }
 
-  // --- RENDER DE CARGA INICIAL ---
   if (authChecking) return <div className="h-screen bg-slate-950"></div>
 
-  // --- PANTALLA DE LOGIN SEGURA ---
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden font-sans">
         <Toaster position="top-center" richColors />
-        
-        {/* Fondo animado estilo matrix/neón */}
         <div className="absolute w-[600px] h-[600px] bg-blue-600/20 blur-[120px] rounded-full top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
         <div className="absolute w-[400px] h-[400px] bg-emerald-500/10 blur-[100px] rounded-full bottom-0 right-0 pointer-events-none"></div>
-
-        <motion.div 
-          initial={{ opacity: 0, y: 20, scale: 0.95 }} 
-          animate={{ opacity: 1, y: 0, scale: 1 }} 
-          transition={{ duration: 0.5, ease: "easeOut" }}
-          className="bg-slate-900/80 backdrop-blur-2xl rounded-[2rem] p-8 sm:p-10 shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-slate-800 w-full max-w-md relative z-10"
-        >
-          <div className="flex justify-center mb-6">
-            <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-cyan-500 text-white rounded-[1.5rem] flex items-center justify-center shadow-lg shadow-blue-500/30">
-              <Lock size={36} />
-            </div>
-          </div>
-          
+        <motion.div initial={{ opacity: 0, y: 20, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.5, ease: "easeOut" }} className="bg-slate-900/80 backdrop-blur-2xl rounded-[2rem] p-8 sm:p-10 shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-slate-800 w-full max-w-md relative z-10">
+          <div className="flex justify-center mb-6"><div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-cyan-500 text-white rounded-[1.5rem] flex items-center justify-center shadow-lg shadow-blue-500/30"><Lock size={36} /></div></div>
           <h2 className="text-2xl font-black text-center text-white mb-2 tracking-tight">Acceso Restringido</h2>
           <p className="text-center text-slate-400 text-sm mb-8 font-medium">Panel exclusivo para Recursos Humanos de RUAG.</p>
-          
           <form onSubmit={handleLogin} className="space-y-6">
-            <div>
-              <input 
-                type="password" 
-                placeholder="CONTRASEÑA..." 
-                value={passInput} 
-                onChange={e => setPassInput(e.target.value)} 
-                className="w-full text-center tracking-[0.5em] font-black text-xl px-4 py-4 bg-slate-950/50 border-2 border-slate-800 rounded-2xl text-white focus:border-blue-500 focus:bg-slate-900 transition-all outline-none placeholder:text-slate-600 placeholder:tracking-widest placeholder:text-sm placeholder:font-bold"
-                autoFocus
-              />
-            </div>
-            <button 
-              type="submit" 
-              disabled={isAuthenticating || passInput.length < 4} 
-              className="w-full bg-blue-600 text-white font-bold text-lg py-4 rounded-2xl shadow-lg shadow-blue-900/50 hover:bg-blue-500 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+            <div><input type="password" placeholder="CONTRASEÑA..." value={passInput} onChange={e => setPassInput(e.target.value)} className="w-full text-center tracking-[0.5em] font-black text-xl px-4 py-4 bg-slate-950/50 border-2 border-slate-800 rounded-2xl text-white focus:border-blue-500 focus:bg-slate-900 transition-all outline-none placeholder:text-slate-600 placeholder:tracking-widest placeholder:text-sm placeholder:font-bold" autoFocus/></div>
+            <button type="submit" disabled={isAuthenticating || passInput.length < 4} className="w-full bg-blue-600 text-white font-bold text-lg py-4 rounded-2xl shadow-lg shadow-blue-900/50 hover:bg-blue-500 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed">
               {isAuthenticating ? <Loader2 size={24} className="animate-spin"/> : 'Desbloquear Sistema'}
             </button>
           </form>
@@ -378,7 +416,6 @@ export default function AdminDashboard() {
     )
   }
 
-  // --- DASHBOARD PRINCIPAL (Si está autenticado) ---
   return (
     <div className="flex h-screen bg-gray-50 font-sans text-slate-900 overflow-hidden relative">
       <Toaster position="bottom-right" richColors />
@@ -395,8 +432,15 @@ export default function AdminDashboard() {
                   <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center"><User size={20}/></div>
                   <div><h2 className="text-lg font-bold text-slate-900">Vista Previa del Postulante</h2><p className="text-xs text-slate-500 font-mono">DNI: {previewData.dni}</p></div>
                 </div>
-                <div className="flex items-center gap-4 w-full sm:w-auto overflow-visible">
-                  <EstadoDropdown postulanteId={previewData.id} estadoActual={previewData.estado} supabase={supabase} />
+                <div className="flex items-center gap-4 w-full sm:w-auto overflow-x-auto pb-2 sm:pb-0">
+                  {/* Selector con Radio Buttons en el Modal (SIN EL MENÚ DESPLEGABLE) */}
+                  <EstadoRadio 
+                    postulanteId={previewData.id} 
+                    estadoActual={previewData.estado} 
+                    supabase={supabase} 
+                    layout="row" 
+                    onStatusChange={(nuevo) => handleEstadoChangeGlobal(previewData.id, nuevo)} 
+                  />
                   <button onClick={() => setPreviewData(null)} className="p-2 text-slate-400 hover:bg-gray-200 hover:text-slate-800 rounded-full transition-colors ml-auto"><X size={24} /></button>
                 </div>
               </div>
@@ -404,16 +448,17 @@ export default function AdminDashboard() {
               <div className="flex-1 overflow-y-auto p-8 scrollbar-thin scrollbar-thumb-gray-200">
                 <div className="flex flex-col sm:flex-row gap-8 items-start mb-8">
                   {previewData.foto_url ? ( <img src={previewData.foto_url} alt="Foto" className="w-32 h-32 rounded-2xl object-cover border-4 border-gray-50 shadow-md shrink-0" /> ) : ( <div className="w-32 h-32 rounded-2xl bg-gray-100 border-4 border-gray-50 flex items-center justify-center text-gray-400 shrink-0"><User size={40}/></div> )}
-                  <div className="space-y-3 w-full">
+                  <div className="space-y-3 w-full overflow-hidden">
                     <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tight leading-none">{previewData.nombres} {previewData.apellidos}</h1>
                     <div className="flex flex-wrap gap-4 text-sm font-medium text-slate-600">
                       <span className="flex items-center gap-1.5"><Phone size={16} className="text-blue-500"/> {previewData.telefono || 'Sin celular'}</span>
                       <span className="flex items-center gap-1.5"><Mail size={16} className="text-blue-500"/> {previewData.correo || 'Sin correo'}</span>
                       <span className="flex items-center gap-1.5"><MapPin size={16} className="text-blue-500"/> {previewData.direccion || 'Sin dirección'}</span>
                     </div>
-                    <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-sm text-slate-600 mt-2">
+                    {/* SOLUCIÓN AL TEXTO LARGO DE USUARIOS (Clase break-all añadida) */}
+                    <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-sm text-slate-600 mt-2 w-full overflow-hidden">
                       <p className="font-bold text-slate-800 mb-1 text-xs uppercase tracking-widest">Resumen Profesional</p>
-                      {previewData.perfil_profesional || 'El candidato no escribió un resumen.'}
+                      <p className="break-all whitespace-pre-wrap">{previewData.perfil_profesional || 'El candidato no escribió un resumen.'}</p>
                     </div>
                   </div>
                 </div>
@@ -421,7 +466,7 @@ export default function AdminDashboard() {
                 <div className="mb-8 bg-amber-50/50 border border-amber-100 rounded-2xl p-5 relative overflow-hidden">
                   <div className="absolute top-0 left-0 w-1.5 h-full bg-amber-400"></div>
                   <h3 className="text-sm font-bold text-amber-800 uppercase tracking-widest mb-3 flex items-center gap-2"><FileText size={16} className="text-amber-500"/> Notas Internas (Solo RRHH)</h3>
-                  <textarea value={notaLocal} onChange={(e) => setNotaLocal(e.target.value)} placeholder="Escribe aquí observaciones sobre la entrevista, expectativas salariales o comentarios confidenciales..." className="w-full bg-white border border-amber-200 rounded-xl p-3 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-amber-400 resize-none min-h-[80px]"/>
+                  <textarea value={notaLocal} onChange={(e) => setNotaLocal(e.target.value)} placeholder="Escribe aquí observaciones sobre la entrevista, expectativas salariales o comentarios confidenciales..." className="w-full bg-white border border-amber-200 rounded-xl p-3 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-amber-400 resize-none min-h-[80px] break-all"/>
                   <div className="flex justify-end mt-3">
                     <button onClick={guardarNotaInterna} disabled={guardandoNota || notaLocal === previewData.notas_internas} className="bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50">
                       <Save size={14} /> {guardandoNota ? 'Guardando...' : 'Guardar Nota'}
@@ -434,7 +479,7 @@ export default function AdminDashboard() {
                     <h3 className="flex items-center gap-2 text-sm font-bold text-slate-800 uppercase tracking-widest mb-4 border-b border-gray-100 pb-2"><Briefcase size={18} className="text-blue-500"/> Experiencia Laboral</h3>
                     <div className="space-y-4">
                       {previewData.experiencias && previewData.experiencias.length > 0 ? previewData.experiencias.map((exp, i) => (
-                        <div key={i} className="relative pl-4 border-l-2 border-blue-100"><div className="absolute w-2 h-2 bg-blue-500 rounded-full -left-[5px] top-1.5"></div><h4 className="font-bold text-slate-900 text-sm">{exp.cargo}</h4><p className="text-xs text-blue-600 font-semibold mb-1">{exp.empresa} <span className="text-slate-400 font-normal">| {exp.fecha_inicio} - {exp.fecha_fin || 'Actual'}</span></p><p className="text-xs text-slate-600 leading-relaxed">{exp.descripcion}</p></div>
+                        <div key={i} className="relative pl-4 border-l-2 border-blue-100"><div className="absolute w-2 h-2 bg-blue-500 rounded-full -left-[5px] top-1.5"></div><h4 className="font-bold text-slate-900 text-sm">{exp.cargo}</h4><p className="text-xs text-blue-600 font-semibold mb-1">{exp.empresa} <span className="text-slate-400 font-normal">| {exp.fecha_inicio} - {exp.fecha_fin || 'Actual'}</span></p><p className="text-xs text-slate-600 leading-relaxed break-all">{exp.descripcion}</p></div>
                       )) : <p className="text-sm text-slate-400 italic">No registra experiencia.</p>}
                     </div>
                   </div>
@@ -514,7 +559,16 @@ export default function AdminDashboard() {
               <div className="p-8 border-b border-gray-100 flex justify-between items-center bg-gray-50/50"><h3 className="font-extrabold text-slate-950 text-xl tracking-tight"><Inbox size={22} className="text-blue-600 inline mr-3 -mt-1"/>{activeView === 'dashboard' ? 'Últimos Candidatos' : 'Directorio Completo de Talentos'}</h3><div className="text-xs text-slate-500 font-mono bg-white p-2.5 px-4 rounded-xl border border-gray-100 shadow-inner">{filteredData.length} resultados filtrados</div></div>
               <div className="overflow-x-auto pb-32">
                 <table className="w-full text-left border-collapse min-w-[1100px]">
-                  <thead className="bg-gray-50 border-b border-gray-100"><tr><th className="px-8 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest">Información del Candidato</th><th className="px-8 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest">Estado RRHH</th><th className="px-8 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest">Datos de Contacto</th><th className="px-8 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest">Perfil Profesional</th><th className="px-8 py-5 text-right text-xs font-bold text-slate-400 uppercase tracking-widest">Acciones</th></tr></thead>
+                  <thead className="bg-gray-50 border-b border-gray-100">
+                    <tr>
+                      <th className="px-8 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest">Información del Candidato</th>
+                      <th className="px-8 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest">Estado RRHH</th>
+                      <th className="px-8 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest">Datos de Contacto</th>
+                      {/* CAMBIO: Columna de Notas en lugar de Resumen Profesional */}
+                      <th className="px-8 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest">Notas de RRHH</th>
+                      <th className="px-8 py-5 text-right text-xs font-bold text-slate-400 uppercase tracking-widest">Acciones</th>
+                    </tr>
+                  </thead>
                   <tbody className="divide-y divide-gray-100/80">
                     {filteredData.length === 0 ? (
                       <tr><td colSpan={5} className="p-24 text-center text-slate-500 bg-white"><Users size={64} className="mx-auto mb-6 opacity-20 text-blue-400"/><p className="font-bold text-lg text-slate-600 mb-1">Bandeja de talentos vacía.</p><p className="text-sm text-slate-400 mt-1">Prueba cambiando los filtros de búsqueda.</p></td></tr>
@@ -526,10 +580,18 @@ export default function AdminDashboard() {
                             <div className="flex items-center gap-5">{p.foto_url ? (<img src={p.foto_url} alt="Foto" className="w-16 h-16 rounded-2xl object-cover border border-gray-100 group-hover:border-blue-100 transition-colors shadow-inner" />) : (<div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center font-black text-slate-500 border border-gray-100 group-hover:bg-blue-50 group-hover:border-blue-100 transition-colors">{p.nombres.charAt(0)}{p.apellidos.charAt(0)}</div>)}<div><p className="font-extrabold text-slate-950 text-base leading-tight uppercase tracking-tight group-hover:text-blue-700 transition-colors">{p.apellidos}, {p.nombres}</p><div className="flex items-center gap-2 mt-2"><User size={12} className="text-slate-400"/><div className="text-[11px] font-mono text-slate-600 bg-gray-100 p-1 px-2 rounded-lg border border-gray-100 shadow-inner">DNI: {p.dni}</div></div></div></div>
                           </td>
                           <td className="px-8 py-6 relative z-10">
-                            <EstadoDropdown postulanteId={p.id} estadoActual={p.estado} supabase={supabase} />
+                            {/* Selector Dropdown en la Tabla Principal. Ahora sincroniza el estado al instante. */}
+                            <EstadoDropdown postulanteId={p.id} estadoActual={p.estado} supabase={supabase} onStatusChange={(nuevo) => handleEstadoChangeGlobal(p.id, nuevo)} />
                           </td>
                           <td className="px-8 py-6 relative z-10 space-y-2"><div className="flex items-center gap-2.5 text-slate-700"><Phone size={14} className="text-slate-400"/><p className="text-sm font-semibold">{p.telefono || '-'}</p></div><div className="flex items-center gap-2.5 text-slate-500"><Mail size={14} className="text-slate-400"/><p className="text-xs truncate max-w-[200px] font-medium">{p.correo || '-'}</p></div></td>
-                          <td className="px-8 py-6 relative z-10"><p className="text-xs text-slate-600 bg-white px-5 py-3 rounded-2xl border border-gray-100 inline-block line-clamp-2 max-w-[250px] font-medium leading-relaxed shadow-sm shadow-inner" title={p.perfil_profesional}>{p.perfil_profesional ? p.perfil_profesional : 'Sin descripción.'}</p></td>
+                          
+                          {/* CAMBIO: Tabla Principal muestra las Notas de RRHH (Truncado con break-all) */}
+                          <td className="px-8 py-6 relative z-10">
+                            <p className="text-xs text-amber-700 bg-amber-50 px-5 py-3 rounded-2xl border border-amber-100 inline-block line-clamp-2 max-w-[250px] font-medium leading-relaxed shadow-sm shadow-inner break-all" title={p.notas_internas}>
+                              {p.notas_internas ? p.notas_internas : 'Sin notas registradas.'}
+                            </p>
+                          </td>
+
                           <td className="px-8 py-6 text-right relative z-10">
                             <div className="flex justify-end gap-3 relative z-10">
                               <motion.button onClick={() => abrirModal(p)} whileTap={{ scale: 0.96 }} className="p-3 text-slate-500 hover:text-white hover:bg-slate-900 rounded-xl transition-all border border-gray-100 hover:border-slate-800 active:scale-95 shadow-sm bg-white" title="Ver Resumen Rápido"><Eye size={18}/></motion.button>
