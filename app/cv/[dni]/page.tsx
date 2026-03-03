@@ -1,0 +1,485 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useParams, useRouter } from 'next/navigation'
+import { createClient } from '@/utils/supabase/client'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Toaster, toast } from 'sonner'
+import { 
+  User, Briefcase, GraduationCap, FileBadge, 
+  Plus, Trash2, UploadCloud, ChevronLeft, Loader2, Image as ImageIcon, FileText, 
+  LayoutDashboard, Download, CheckCircle2, FileDown, ShieldCheck, MapPin
+} from 'lucide-react'
+
+// --- LIBRERÍAS PARA EL PDF ---
+import { Document, Page, Text, View, StyleSheet, Image as PdfImage, pdf } from '@react-pdf/renderer'
+
+// --- ESTILOS DEL PDF (Plantilla Corporativa a 2 Columnas) ---
+const pdfStyles = StyleSheet.create({
+  page: { flexDirection: 'row', backgroundColor: '#ffffff', fontFamily: 'Helvetica' },
+  leftColumn: { width: '35%', backgroundColor: '#0f172a', padding: 30, color: '#f8fafc' },
+  photoContainer: { alignItems: 'center', marginBottom: 20 },
+  photo: { width: 110, height: 110, borderRadius: 55, objectFit: 'cover', border: '3px solid #334155' },
+  nameLeft: { fontSize: 22, fontWeight: 'bold', textAlign: 'center', marginTop: 10, color: '#ffffff', textTransform: 'uppercase' },
+  roleLeft: { fontSize: 10, textAlign: 'center', color: '#94a3b8', marginTop: 4, letterSpacing: 1 },
+  sectionLeft: { marginTop: 30 },
+  titleLeft: { fontSize: 12, fontWeight: 'bold', color: '#38bdf8', borderBottom: '1px solid #334155', paddingBottom: 5, marginBottom: 10, letterSpacing: 1 },
+  textLeft: { fontSize: 10, color: '#cbd5e1', marginBottom: 8, lineHeight: 1.4 },
+  rightColumn: { width: '65%', padding: 40, paddingTop: 45 },
+  sectionRight: { marginBottom: 25 },
+  titleRight: { fontSize: 14, fontWeight: 'bold', color: '#0f172a', borderBottom: '2px solid #e2e8f0', paddingBottom: 5, marginBottom: 15, textTransform: 'uppercase', letterSpacing: 1 },
+  textBodyRight: { fontSize: 10, color: '#475569', lineHeight: 1.6, textAlign: 'justify' },
+  itemBlock: { marginBottom: 15 },
+  itemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 3 },
+  itemTitle: { fontSize: 12, fontWeight: 'bold', color: '#1e293b', width: '70%' },
+  itemDate: { fontSize: 9, color: '#2563eb', fontWeight: 'bold', width: '30%', textAlign: 'right' },
+  itemSubtitle: { fontSize: 10, color: '#64748b', marginBottom: 5, fontStyle: 'italic' },
+})
+
+const CVPdfDocument = ({ data }: { data: any }) => (
+  <Document>
+    <Page size="A4" style={pdfStyles.page}>
+      <View style={pdfStyles.leftColumn}>
+        <View style={pdfStyles.photoContainer}>
+          {data.foto_url ? <PdfImage src={data.foto_url} style={pdfStyles.photo} /> : null}
+          <Text style={pdfStyles.nameLeft}>{data.nombres}</Text>
+          <Text style={pdfStyles.nameLeft}>{data.apellidos}</Text>
+          <Text style={pdfStyles.roleLeft}>DNI: {data.dni}</Text>
+        </View>
+        <View style={pdfStyles.sectionLeft}>
+          <Text style={pdfStyles.titleLeft}>CONTACTO</Text>
+          <Text style={pdfStyles.textLeft}>📞 {data.telefono || 'No registrado'}</Text>
+          <Text style={pdfStyles.textLeft}>✉️ {data.correo || 'No registrado'}</Text>
+          <Text style={pdfStyles.textLeft}>📍 {data.direccion || 'No registrado'}</Text>
+        </View>
+        <View style={pdfStyles.sectionLeft}>
+          <Text style={pdfStyles.titleLeft}>PERFIL PROFESIONAL</Text>
+          <Text style={pdfStyles.textLeft}>{data.perfil_profesional || 'Sin descripción registrada.'}</Text>
+        </View>
+      </View>
+      <View style={pdfStyles.rightColumn}>
+        <View style={pdfStyles.sectionRight}>
+          <Text style={pdfStyles.titleRight}>Experiencia Laboral</Text>
+          {data.experiencias && data.experiencias.length > 0 ? data.experiencias.map((exp: any, i: number) => (
+            <View key={i} style={pdfStyles.itemBlock}>
+              <View style={pdfStyles.itemHeader}><Text style={pdfStyles.itemTitle}>{exp.cargo}</Text><Text style={pdfStyles.itemDate}>{exp.fecha_inicio} - {exp.fecha_fin || 'Actual'}</Text></View>
+              <Text style={pdfStyles.itemSubtitle}>{exp.empresa}</Text><Text style={pdfStyles.textBodyRight}>{exp.descripcion}</Text>
+            </View>
+          )) : <Text style={pdfStyles.textBodyRight}>No registra experiencia laboral.</Text>}
+        </View>
+        <View style={pdfStyles.sectionRight}>
+          <Text style={pdfStyles.titleRight}>Educación y Formación</Text>
+          {data.educacion && data.educacion.length > 0 ? data.educacion.map((edu: any, i: number) => (
+            <View key={i} style={pdfStyles.itemBlock}>
+              <View style={pdfStyles.itemHeader}><Text style={pdfStyles.itemTitle}>{edu.titulo}</Text><Text style={pdfStyles.itemDate}>{edu.anio_inicio} - {edu.anio_fin}</Text></View>
+              <Text style={pdfStyles.itemSubtitle}>{edu.institucion} ({edu.nivel})</Text>
+            </View>
+          )) : <Text style={pdfStyles.textBodyRight}>No registra educación previa.</Text>}
+        </View>
+      </View>
+    </Page>
+  </Document>
+)
+
+const AnimatedSaveButton = ({ onClick, isSaving, isSaved }: { onClick: () => void, isSaving: boolean, isSaved: boolean }) => {
+  const buttonStateClass = isSaving || isSaved ? 'is-saving' : '';
+  return (
+    <div className="relative hidden sm:block">
+      <style>{`.btn-uiverse { --primary: #2563eb; --neutral-1: #ffffff; --neutral-2: #f1f5f9; --radius: 12px; cursor: pointer; border-radius: var(--radius); text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1); border: none; box-shadow: 0 0.5px 0.5px 1px rgba(255, 255, 255, 0.2), 0 10px 20px rgba(0, 0, 0, 0.1), 0 4px 5px 0px rgba(0, 0, 0, 0.05); display: flex; align-items: center; justify-content: center; position: relative; transition: all 0.3s ease; min-width: 170px; height: 44px; font-family: inherit; font-size: 14px; font-weight: 700; color: #334155; background: transparent; } .btn-uiverse:hover { transform: scale(1.02); box-shadow: 0 0 1px 2px rgba(255, 255, 255, 0.3), 0 15px 30px rgba(0, 0, 0, 0.15), 0 10px 3px -3px rgba(0, 0, 0, 0.04); } .btn-uiverse:active { transform: scale(1); box-shadow: 0 0 1px 2px rgba(255, 255, 255, 0.3), 0 10px 3px -3px rgba(0, 0, 0, 0.1); } .btn-uiverse:after { content: ""; position: absolute; inset: 0; border-radius: var(--radius); border: 2px solid transparent; background: linear-gradient(var(--neutral-1), var(--neutral-2)) padding-box, linear-gradient(to bottom, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.2)) border-box; z-index: 0; transition: all 0.4s ease; } .btn-uiverse:hover::after { transform: scale(1.02, 1.05); box-shadow: inset 0 -1px 3px 0 rgba(255, 255, 255, 1); } .btn-uiverse::before { content: ""; inset: 5px 4px 4px 4px; position: absolute; background: linear-gradient(to top, var(--neutral-1), var(--neutral-2)); border-radius: 30px; filter: blur(0.5px); z-index: 2; } .state p { display: flex; align-items: center; justify-content: center; margin: 0; } .state .icon { position: absolute; left: 0; top: 0; bottom: 0; margin: auto; transform: scale(1); transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; } .state .icon svg { overflow: visible; } .outline { position: absolute; border-radius: inherit; overflow: hidden; z-index: 1; opacity: 0; transition: opacity 0.4s ease; inset: -2px -3.5px; } .outline::before { content: ""; position: absolute; inset: -100%; background: conic-gradient(from 180deg, transparent 60%, #38bdf8 80%, transparent 100%); animation: spin 2s linear infinite; animation-play-state: paused; } @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } } .btn-uiverse:hover .outline { opacity: 1; } .btn-uiverse:hover .outline::before { animation-play-state: running; } .state p span { display: block; opacity: 0; animation: slideDown 0.8s ease forwards calc(var(--i) * 0.03s); } .btn-uiverse:hover p span { opacity: 1; animation: wave 0.5s ease forwards calc(var(--i) * 0.02s); } .btn-uiverse.is-saving p span { opacity: 1; animation: disapear 0.6s ease forwards calc(var(--i) * 0.03s); } @keyframes wave { 30% { opacity: 1; transform: translateY(3px) translateX(0) rotate(0); } 50% { opacity: 1; transform: translateY(-2px) translateX(0) rotate(0); color: var(--primary); } 100% { opacity: 1; transform: translateY(0) translateX(0) rotate(0); } } @keyframes slideDown { 0% { opacity: 0; transform: translateY(-15px) translateX(5px) rotate(-90deg); color: var(--primary); filter: blur(5px); } 30% { opacity: 1; transform: translateY(3px) translateX(0) rotate(0); filter: blur(0); } 50% { opacity: 1; transform: translateY(-2px) translateX(0) rotate(0); } 100% { opacity: 1; transform: translateY(0) translateX(0) rotate(0); } } @keyframes disapear { from { opacity: 1; } to { opacity: 0; transform: translateX(5px) translateY(15px); color: var(--primary); filter: blur(5px); } } .state--default .icon svg { animation: land 0.6s ease forwards; } .btn-uiverse:hover .state--default .icon { transform: rotate(45deg) scale(1.1); } .btn-uiverse.is-saving .state--default svg { animation: takeOff 0.8s linear forwards; } .btn-uiverse.is-saving .state--default .icon { transform: rotate(0) scale(1.1); } @keyframes takeOff { 0% { opacity: 1; } 60% { opacity: 1; transform: translateX(50px) rotate(45deg) scale(1.5); } 100% { opacity: 0; transform: translateX(120px) rotate(45deg) scale(0); } } @keyframes land { 0% { transform: translateX(-40px) translateY(20px) rotate(-50deg) scale(1.5); opacity: 0; filter: blur(3px); } 100% { transform: translateX(0) translateY(0) rotate(0); opacity: 1; filter: blur(0); } } .state--default .icon:before { content: ""; position: absolute; top: 50%; height: 2px; width: 0; left: -5px; background: linear-gradient(to right, transparent, rgba(37, 99, 235, 0.5)); } .btn-uiverse.is-saving .state--default .icon:before { animation: contrail 0.8s linear forwards; } @keyframes contrail { 0% { width: 0; opacity: 1; } 8% { width: 10px; } 60% { opacity: 0.7; width: 60px; } 100% { opacity: 0; width: 120px; } } .state { padding-left: 25px; z-index: 2; display: flex; position: relative; } .state--default span:nth-child(7) { margin-right: 5px; } .state--sent { display: none; } .state--sent svg { transform: scale(1.1); margin-right: 6px; } .btn-uiverse.is-saving .state--default { position: absolute; } .btn-uiverse.is-saving .state--sent { display: flex; } .btn-uiverse.is-saving .state--sent span { opacity: 0; animation: slideDown 0.8s ease forwards calc(var(--i) * 0.15s); } .btn-uiverse.is-saving .state--sent .icon svg { opacity: 0; animation: appear 1.2s ease forwards 0.8s; } @keyframes appear { 0% { opacity: 0; transform: scale(3) rotate(-40deg); color: var(--primary); filter: blur(4px); } 30% { opacity: 1; transform: scale(0.6); filter: blur(1px); } 50% { opacity: 1; transform: scale(1.2); filter: blur(0); } 100% { opacity: 1; transform: scale(1); } }`}</style>
+      <button className={`btn-uiverse ${buttonStateClass}`} onClick={onClick} disabled={isSaving || isSaved}>
+        <div className="outline" />
+        <div className="state state--default">
+          <div className="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g style={{filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.2))'}}><path d="M14.2199 21.63C13.0399 21.63 11.3699 20.8 10.0499 16.83L9.32988 14.67L7.16988 13.95C3.20988 12.63 2.37988 10.96 2.37988 9.78001C2.37988 8.61001 3.20988 6.93001 7.16988 5.60001L15.6599 2.77001C17.7799 2.06001 19.5499 2.27001 20.6399 3.35001C21.7299 4.43001 21.9399 6.21001 21.2299 8.33001L18.3999 16.82C17.0699 20.8 15.3999 21.63 14.2199 21.63ZM7.63988 7.03001C4.85988 7.96001 3.86988 9.06001 3.86988 9.78001C3.86988 10.5 4.85988 11.6 7.63988 12.52L10.1599 13.36C10.3799 13.43 10.5599 13.61 10.6299 13.83L11.4699 16.35C12.3899 19.13 13.4999 20.12 14.2199 20.12C14.9399 20.12 16.0399 19.13 16.9699 16.35L19.7999 7.86001C20.3099 6.32001 20.2199 5.06001 19.5699 4.41001C18.9199 3.76001 17.6599 3.68001 16.1299 4.19001L7.63988 7.03001Z" fill="currentColor" /><path d="M10.11 14.4C9.92005 14.4 9.73005 14.33 9.58005 14.18C9.29005 13.89 9.29005 13.41 9.58005 13.12L13.16 9.53C13.45 9.24 13.93 9.24 14.22 9.53C14.51 9.82 14.51 10.3 14.22 10.59L10.64 14.18C10.5 14.33 10.3 14.4 10.11 14.4Z" fill="currentColor" /></g></svg></div>
+          <p>{['G','u','a','r','d','a','r','C','V'].map((letter, i) => (<span key={i} style={{ '--i': i } as React.CSSProperties} className={i === 6 ? 'mr-1.5' : ''}>{letter}</span>))}</p>
+        </div>
+        <div className="state state--sent">
+          <div className="icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" height="1em" width="1em" strokeWidth="0.5px" stroke="black"><g style={{filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.2))'}}><path fill="currentColor" d="M12 22.75C6.07 22.75 1.25 17.93 1.25 12C1.25 6.07 6.07 1.25 12 1.25C17.93 1.25 22.75 6.07 22.75 12C22.75 17.93 17.93 22.75 12 22.75ZM12 2.75C6.9 2.75 2.75 6.9 2.75 12C2.75 17.1 6.9 21.25 12 21.25C17.1 21.25 21.25 17.1 21.25 12C21.25 6.9 17.1 2.75 12 2.75Z" /><path fill="currentColor" d="M10.5795 15.5801C10.3795 15.5801 10.1895 15.5001 10.0495 15.3601L7.21945 12.5301C6.92945 12.2401 6.92945 11.7601 7.21945 11.4701C7.50945 11.1801 7.98945 11.1801 8.27945 11.4701L10.5795 13.7701L15.7195 8.6301C16.0095 8.3401 16.4895 8.3401 16.7795 8.6301C17.0695 8.9201 17.0695 9.4001 16.7795 9.6901L11.1095 15.3601C10.9695 15.5001 10.7795 15.5801 10.5795 15.5801Z" /></g></svg></div>
+          <p>{['¡','G','u','a','r','d','a','d','o','!'].map((letter, i) => (<span key={i} style={{ '--i': i + 5 } as React.CSSProperties}>{letter}</span>))}</p>
+        </div>
+      </button>
+    </div>
+  )
+}
+
+type Experiencia = { id: string, empresa: string, cargo: string, fecha_inicio: string, fecha_fin: string, descripcion: string }
+type Educacion = { id: string, institucion: string, titulo: string, nivel: string, anio_inicio: string, anio_fin: string }
+type Certificado = { id: string, nombre: string, institucion: string, url_archivo: string }
+
+export default function ConstructorCV() {
+  const params = useParams()
+  const router = useRouter()
+  const dni = params.dni as string
+  const supabase = createClient()
+
+  const [sidebarView, setSidebarView] = useState<'editar' | 'descargar'>('editar')
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false) 
+  const [uploadingFile, setUploadingFile] = useState(false)
+  const [activeTab, setActiveTab] = useState<'perfil' | 'experiencia' | 'educacion' | 'certificados'>('perfil')
+
+  const [perfil, setPerfil] = useState({ id: '', nombres: '', apellidos: '', correo: '', telefono: '', direccion: '', perfil_profesional: '', foto_url: '' })
+  const [experiencias, setExperiencias] = useState<Experiencia[]>([])
+  const [educacion, setEducacion] = useState<Educacion[]>([])
+  const [certificados, setCertificados] = useState<Certificado[]>([])
+  
+  // NUEVO: ESTADOS PARA FUNCIONES EXTRAS
+  const [aceptaTerminos, setAceptaTerminos] = useState(false)
+  const [progresoCV, setProgresoCV] = useState(0)
+
+  useEffect(() => { cargarDatos() }, [])
+
+  // NUEVO: CALCULAR PROGRESO CADA VEZ QUE CAMBIA ALGO
+  useEffect(() => {
+    let puntos = 0
+    if (perfil.telefono) puntos += 15
+    if (perfil.correo) puntos += 15
+    if (perfil.direccion) puntos += 10
+    if (perfil.perfil_profesional) puntos += 20
+    if (perfil.foto_url) puntos += 20
+    if (experiencias.length > 0) puntos += 10
+    if (educacion.length > 0) puntos += 10
+    setProgresoCV(puntos)
+  }, [perfil, experiencias, educacion])
+
+  const cargarDatos = async () => {
+    try {
+      const { data, error } = await supabase.from('cv_postulantes').select('*').eq('dni', dni).single()
+      if (error) throw error
+      if (data) {
+        setPerfil({
+          id: data.id, nombres: data.nombres, apellidos: data.apellidos, correo: data.correo || '', 
+          telefono: data.telefono || '', direccion: data.direccion || '', 
+          perfil_profesional: data.perfil_profesional || '', foto_url: data.foto_url || ''
+        })
+        setExperiencias(data.experiencias || [])
+        setEducacion(data.educacion || [])
+        setCertificados(data.certificados || [])
+      }
+    } catch (error) {
+      toast.error('Error al cargar tu información.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleUploadFile = async (e: React.ChangeEvent<HTMLInputElement>, tipo: 'foto' | 'certificado', certId?: string) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingFile(true)
+    const toastId = toast.loading(`Subiendo ${tipo === 'foto' ? 'foto' : 'archivo'}...`)
+
+    try {
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${dni}_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
+      const filePath = `${tipo}s/${fileName}`
+
+      const { error: uploadError } = await supabase.storage.from('cv_assets').upload(filePath, file)
+      if (uploadError) throw uploadError
+
+      const { data: { publicUrl } } = supabase.storage.from('cv_assets').getPublicUrl(filePath)
+
+      if (tipo === 'foto') setPerfil(prev => ({ ...prev, foto_url: publicUrl }))
+      else if (tipo === 'certificado' && certId) setCertificados(prev => prev.map(c => c.id === certId ? { ...c, url_archivo: publicUrl } : c))
+
+      toast.success('¡Subido correctamente!', { id: toastId })
+    } catch (error) {
+      toast.error('Error al subir el archivo.', { id: toastId })
+    } finally {
+      setUploadingFile(false)
+    }
+  }
+
+  const handleGuardar = async () => {
+    setSaving(true)
+    try {
+      const { error } = await supabase.from('cv_postulantes').update({
+        correo: perfil.correo, telefono: perfil.telefono, direccion: perfil.direccion, perfil_profesional: perfil.perfil_profesional,
+        foto_url: perfil.foto_url, experiencias: experiencias, educacion: educacion, certificados: certificados, updated_at: new Date().toISOString()
+      }).eq('dni', dni)
+
+      if (error) throw error
+      setSaved(true)
+      setTimeout(() => { setSaving(false); setSaved(false) }, 3000)
+    } catch (error) {
+      setSaving(false)
+      toast.error('Hubo un error al guardar.')
+    }
+  }
+
+  const descargarMiCV = async () => {
+    if (!aceptaTerminos) {
+      toast.error('Debes aceptar la política de privacidad para descargar tu CV.')
+      return
+    }
+    const toastId = toast.loading('Generando tu CV Oficial...')
+    try {
+      const fullData = { ...perfil, dni, experiencias, educacion, certificados }
+      const blob = await pdf(<CVPdfDocument data={fullData} />).toBlob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `CV_RUAG_${perfil.apellidos}_${dni}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      toast.success('¡CV descargado con éxito!', { id: toastId })
+    } catch (error) {
+      toast.error('Error al generar el PDF', { id: toastId })
+    }
+  }
+
+  // DATA DE UBIGEOS (Simulada para el ejemplo, enfocada en Callao/Lima)
+  const distritos = [
+    "Callao Cercado", "Bellavista", "Carmen de la Legua", "La Perla", "La Punta", "Ventanilla", "Mi Perú",
+    "Lima Cercado", "San Miguel", "Magdalena del Mar", "Pueblo Libre", "Los Olivos", "San Martín de Porres", "Comas"
+  ]
+
+  if (loading) return <div className="h-screen flex items-center justify-center bg-gray-50"><Loader2 className="animate-spin text-blue-600" size={40} /></div>
+
+  return (
+    <div className="flex h-screen bg-gray-50 font-sans text-slate-900 overflow-hidden">
+      <Toaster position="top-center" richColors />
+
+      <aside className="w-20 lg:w-64 bg-white border-r border-gray-100 flex flex-col h-full z-20 shadow-sm shrink-0 transition-all">
+        <div className="h-20 flex items-center justify-center lg:justify-start lg:px-6 border-b border-gray-100">
+          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-md"><FileText size={20}/></div>
+          <h1 className="hidden lg:block font-extrabold text-xl ml-3 tracking-tighter text-slate-900">RUAG <span className="font-light text-slate-500">Postulante</span></h1>
+        </div>
+        <nav className="flex-1 py-6 flex flex-col gap-2 px-3">
+          <button onClick={() => setSidebarView('editar')} className={`flex items-center justify-center lg:justify-start gap-4 w-full p-4 rounded-2xl transition-all font-bold text-sm ${sidebarView === 'editar' ? 'bg-blue-50 text-blue-700' : 'text-slate-500 hover:bg-gray-50 hover:text-slate-900'}`}>
+            <LayoutDashboard size={20} /><span className="hidden lg:block tracking-tight">Editar Mi CV</span>
+          </button>
+          <button onClick={() => setSidebarView('descargar')} className={`flex items-center justify-center lg:justify-start gap-4 w-full p-4 rounded-2xl transition-all font-bold text-sm ${sidebarView === 'descargar' ? 'bg-blue-50 text-blue-700' : 'text-slate-500 hover:bg-gray-50 hover:text-slate-900'}`}>
+            <Download size={20} /><span className="hidden lg:block tracking-tight">Descargar PDF</span>
+          </button>
+        </nav>
+        <div className="p-4 border-t border-gray-100">
+          <button onClick={() => router.push('/')} className="flex items-center justify-center lg:justify-start gap-3 w-full p-3 rounded-xl text-slate-400 hover:bg-red-50 hover:text-red-600 transition-all font-semibold text-sm">
+            <ChevronLeft size={18} /><span className="hidden lg:block">Salir de mi cuenta</span>
+          </button>
+        </div>
+      </aside>
+
+      <main className="flex-1 flex flex-col h-full overflow-hidden relative">
+        {sidebarView === 'editar' && (
+          <>
+            <header className="bg-white/80 backdrop-blur-xl border-b border-gray-100 sticky top-0 z-10 flex flex-col">
+              <div className="px-6 lg:px-10 h-20 flex items-center justify-between">
+                <div className="flex flex-col gap-1 w-1/2 md:w-1/3">
+                  <h2 className="text-xl font-extrabold text-slate-900 tracking-tighter">Constructor de CV</h2>
+                  {/* NUEVO: BARRA DE PROGRESO */}
+                  <div className="flex items-center gap-3">
+                    <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                      <motion.div initial={{ width: 0 }} animate={{ width: `${progresoCV}%` }} transition={{ duration: 0.8 }} className={`h-full rounded-full ${progresoCV === 100 ? 'bg-emerald-500' : 'bg-blue-500'}`}/>
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-400">{progresoCV}%</span>
+                  </div>
+                </div>
+                
+                <AnimatedSaveButton onClick={handleGuardar} isSaving={saving} isSaved={saved} />
+                <button onClick={handleGuardar} disabled={saving || saved} className="sm:hidden bg-blue-600 text-white p-3 rounded-xl shadow-md active:scale-95 disabled:opacity-50">
+                  {saving ? <Loader2 size={20} className="animate-spin"/> : saved ? <CheckCircle2 size={20}/> : <FileDown size={20}/>}
+                </button>
+              </div>
+
+              <div className="px-6 lg:px-10 flex overflow-x-auto scrollbar-hide border-t border-gray-50">
+                <nav className="flex space-x-6 min-w-max py-1">
+                  {[{ id: 'perfil', label: 'Personal', icon: User }, { id: 'experiencia', label: 'Experiencia', icon: Briefcase }, { id: 'educacion', label: 'Educación', icon: GraduationCap }, { id: 'certificados', label: 'Documentos', icon: FileBadge }].map((tab) => (
+                    <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`py-3 flex items-center gap-2 text-sm font-bold border-b-2 transition-all ${activeTab === tab.id ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-400 hover:text-slate-700'}`}>
+                      <tab.icon size={16} /> {tab.label}
+                    </button>
+                  ))}
+                </nav>
+              </div>
+            </header>
+
+            <div className="flex-1 overflow-y-auto p-6 lg:p-10 scrollbar-thin scrollbar-thumb-gray-200">
+              <div className="max-w-4xl mx-auto pb-20">
+                <AnimatePresence mode="wait">
+                  {activeTab === 'perfil' && (
+                    <motion.div key="perfil" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
+                      <div className="bg-white p-6 sm:p-8 rounded-[2rem] border border-gray-100 shadow-sm flex flex-col sm:flex-row items-center gap-6">
+                        <div className="relative group">
+                          <div className="w-28 h-28 rounded-full bg-gray-100 border-4 border-white shadow-lg overflow-hidden flex items-center justify-center">
+                            {perfil.foto_url ? <img src={perfil.foto_url} alt="Perfil" className="w-full h-full object-cover" /> : <ImageIcon size={40} className="text-gray-300" />}
+                          </div>
+                          <label className="absolute bottom-0 right-0 bg-blue-600 text-white p-2.5 rounded-full cursor-pointer shadow-lg hover:bg-blue-700 transition-colors ring-4 ring-white">
+                            <UploadCloud size={16} />
+                            <input type="file" accept="image/*" className="hidden" onChange={(e) => handleUploadFile(e, 'foto')} />
+                          </label>
+                        </div>
+                        <div className="text-center sm:text-left">
+                          <h3 className="text-xl font-bold text-slate-900">Fotografía Profesional</h3>
+                          <p className="text-sm text-slate-500 mt-1 max-w-sm">Sube una foto clara y formal. Esto aparecerá en tu Currículum Oficial en formato PDF.</p>
+                        </div>
+                      </div>
+
+                      <div className="bg-white p-6 sm:p-8 rounded-[2rem] border border-gray-100 shadow-sm space-y-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                          <div><label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Nombres</label><input type="text" value={perfil.nombres} readOnly className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl text-slate-500 font-semibold cursor-not-allowed" /></div>
+                          <div><label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Apellidos</label><input type="text" value={perfil.apellidos} readOnly className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl text-slate-500 font-semibold cursor-not-allowed" /></div>
+                          <div><label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Celular</label><input type="tel" value={perfil.telefono} onChange={e => setPerfil({...perfil, telefono: e.target.value})} className="w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl text-slate-900 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all shadow-inner" placeholder="Ej. 987654321"/></div>
+                          <div><label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Correo Electrónico</label><input type="email" value={perfil.correo} onChange={e => setPerfil({...perfil, correo: e.target.value})} className="w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl text-slate-900 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all shadow-inner" placeholder="ejemplo@correo.com"/></div>
+                        </div>
+                        
+                        {/* NUEVO: SELECTOR DE UBIGEO/DISTRITO (Más fácil para el usuario) */}
+                        <div>
+                          <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Distrito de Residencia</label>
+                          <div className="relative">
+                            <MapPin size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <select 
+                              value={perfil.direccion} 
+                              onChange={e => setPerfil({...perfil, direccion: e.target.value})} 
+                              className="w-full pl-12 pr-5 py-4 bg-white border border-gray-200 rounded-2xl text-slate-900 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all shadow-inner appearance-none cursor-pointer"
+                            >
+                              <option value="">Selecciona tu distrito...</option>
+                              {distritos.map(d => <option key={d} value={d}>{d}</option>)}
+                            </select>
+                          </div>
+                        </div>
+
+                        <div><label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Resumen Profesional</label><textarea rows={4} value={perfil.perfil_profesional} onChange={e => setPerfil({...perfil, perfil_profesional: e.target.value})} className="w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl text-slate-900 font-medium focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all resize-none shadow-inner" placeholder="Describe brevemente quién eres, tu experiencia y tus habilidades principales..."/></div>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {activeTab === 'experiencia' && (
+                    <motion.div key="experiencia" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
+                      {experiencias.map((exp, index) => (
+                        <div key={exp.id} className="bg-white p-6 sm:p-8 rounded-[2rem] border border-gray-100 shadow-sm relative group">
+                          <button onClick={() => setExperiencias(experiencias.filter(e => e.id !== exp.id))} className="absolute top-6 right-6 p-2.5 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-xl transition-colors"><Trash2 size={18} /></button>
+                          <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2"><Briefcase size={16}/> Experiencia {index + 1}</h3>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
+                            <div><label className="block text-xs font-bold text-slate-400 mb-2 ml-1">Empresa / Obra</label><input type="text" value={exp.empresa} onChange={e => setExperiencias(experiencias.map(x => x.id === exp.id ? {...x, empresa: e.target.value} : x))} className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl font-semibold outline-none focus:border-blue-500 focus:bg-white transition-all"/></div>
+                            <div><label className="block text-xs font-bold text-slate-400 mb-2 ml-1">Cargo Desempeñado</label><input type="text" value={exp.cargo} onChange={e => setExperiencias(experiencias.map(x => x.id === exp.id ? {...x, cargo: e.target.value} : x))} className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl font-semibold outline-none focus:border-blue-500 focus:bg-white transition-all"/></div>
+                            <div><label className="block text-xs font-bold text-slate-400 mb-2 ml-1">Mes/Año Inicio</label><input type="month" value={exp.fecha_inicio} onChange={e => setExperiencias(experiencias.map(x => x.id === exp.id ? {...x, fecha_inicio: e.target.value} : x))} className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl font-semibold outline-none focus:border-blue-500 focus:bg-white transition-all"/></div>
+                            <div><label className="block text-xs font-bold text-slate-400 mb-2 ml-1">Mes/Año Fin (o Actual)</label><input type="month" value={exp.fecha_fin} onChange={e => setExperiencias(experiencias.map(x => x.id === exp.id ? {...x, fecha_fin: e.target.value} : x))} className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl font-semibold outline-none focus:border-blue-500 focus:bg-white transition-all"/></div>
+                          </div>
+                          <div><label className="block text-xs font-bold text-slate-400 mb-2 ml-1">Descripción de Funciones</label><textarea rows={3} value={exp.descripcion} onChange={e => setExperiencias(experiencias.map(x => x.id === exp.id ? {...x, descripcion: e.target.value} : x))} className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl font-medium outline-none focus:border-blue-500 focus:bg-white transition-all resize-none" placeholder="¿Qué tareas realizabas?"/></div>
+                        </div>
+                      ))}
+                      <button onClick={() => setExperiencias([...experiencias, { id: crypto.randomUUID(), empresa: '', cargo: '', fecha_inicio: '', fecha_fin: '', descripcion: '' }])} className="w-full py-5 border-2 border-dashed border-gray-300 rounded-[2rem] text-slate-500 font-bold flex items-center justify-center gap-2 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-all">
+                        <Plus size={20} /> Añadir Experiencia Laboral
+                      </button>
+                    </motion.div>
+                  )}
+
+                  {activeTab === 'educacion' && (
+                    <motion.div key="educacion" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
+                      {educacion.map((edu, index) => (
+                        <div key={edu.id} className="bg-white p-6 sm:p-8 rounded-[2rem] border border-gray-100 shadow-sm relative group">
+                          <button onClick={() => setEducacion(educacion.filter(e => e.id !== edu.id))} className="absolute top-6 right-6 p-2.5 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-xl transition-colors"><Trash2 size={18} /></button>
+                          <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2"><GraduationCap size={16}/> Estudio {index + 1}</h3>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                            <div><label className="block text-xs font-bold text-slate-400 mb-2 ml-1">Centro de Estudios</label><input type="text" value={edu.institucion} onChange={e => setEducacion(educacion.map(x => x.id === edu.id ? {...x, institucion: e.target.value} : x))} className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl font-semibold outline-none focus:border-blue-500 focus:bg-white transition-all" placeholder="Ej. SENATI, SENCICO..."/></div>
+                            <div><label className="block text-xs font-bold text-slate-400 mb-2 ml-1">Título / Oficio</label><input type="text" value={edu.titulo} onChange={e => setEducacion(educacion.map(x => x.id === edu.id ? {...x, titulo: e.target.value} : x))} className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl font-semibold outline-none focus:border-blue-500 focus:bg-white transition-all"/></div>
+                            <div><label className="block text-xs font-bold text-slate-400 mb-2 ml-1">Nivel</label><select value={edu.nivel} onChange={e => setEducacion(educacion.map(x => x.id === edu.id ? {...x, nivel: e.target.value} : x))} className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl font-semibold outline-none focus:border-blue-500 focus:bg-white transition-all"><option value="">Seleccionar Nivel</option><option value="Secundaria">Secundaria Completa</option><option value="Tecnico">Técnico Superior</option><option value="Universitario">Universitario</option><option value="Curso Libre">Capacitación</option></select></div>
+                            <div className="flex gap-4"><div className="w-1/2"><label className="block text-xs font-bold text-slate-400 mb-2 ml-1">Año Inicio</label><input type="number" value={edu.anio_inicio} onChange={e => setEducacion(educacion.map(x => x.id === edu.id ? {...x, anio_inicio: e.target.value} : x))} className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl font-semibold outline-none focus:border-blue-500 focus:bg-white transition-all"/></div><div className="w-1/2"><label className="block text-xs font-bold text-slate-400 mb-2 ml-1">Año Fin</label><input type="number" value={edu.anio_fin} onChange={e => setEducacion(educacion.map(x => x.id === edu.id ? {...x, anio_fin: e.target.value} : x))} className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl font-semibold outline-none focus:border-blue-500 focus:bg-white transition-all"/></div></div>
+                          </div>
+                        </div>
+                      ))}
+                      <button onClick={() => setEducacion([...educacion, { id: crypto.randomUUID(), institucion: '', titulo: '', nivel: '', anio_inicio: '', anio_fin: '' }])} className="w-full py-5 border-2 border-dashed border-gray-300 rounded-[2rem] text-slate-500 font-bold flex items-center justify-center gap-2 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-all">
+                        <Plus size={20} /> Añadir Estudio o Formación
+                      </button>
+                    </motion.div>
+                  )}
+
+                  {activeTab === 'certificados' && (
+                    <motion.div key="certificados" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
+                      <div className="bg-blue-50 text-blue-800 p-5 rounded-2xl flex gap-3 text-sm font-medium border border-blue-100"><FileBadge size={20} className="shrink-0 mt-0.5 text-blue-600" /><p>Adjunta fotos o PDFs de tus diplomas y constancias. El área de Recursos Humanos revisará estos documentos.</p></div>
+                      {certificados.map((cert) => (
+                        <div key={cert.id} className="bg-white p-6 sm:p-8 rounded-[2rem] border border-gray-100 shadow-sm relative flex flex-col md:flex-row gap-8 items-center">
+                          <button onClick={() => setCertificados(certificados.filter(c => c.id !== cert.id))} className="absolute top-6 right-6 p-2.5 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-xl transition-colors"><Trash2 size={18} /></button>
+                          
+                          <div className="w-full md:w-48 shrink-0">
+                            {cert.url_archivo ? (
+                              <div className="h-32 rounded-2xl border-2 border-emerald-200 bg-emerald-50 flex flex-col items-center justify-center text-emerald-700 relative overflow-hidden group/file">
+                                <FileText size={36} className="mb-2 opacity-80" />
+                                <span className="text-xs font-bold uppercase tracking-widest">Listo</span>
+                                <label className="absolute inset-0 bg-emerald-900/80 flex flex-col items-center justify-center text-white opacity-0 group-hover/file:opacity-100 cursor-pointer transition-opacity backdrop-blur-sm">
+                                  <UploadCloud size={24} className="mb-2" />
+                                  <span className="text-xs font-bold uppercase tracking-widest">Cambiar</span>
+                                  <input type="file" accept="image/*,.pdf" className="hidden" onChange={(e) => handleUploadFile(e, 'certificado', cert.id)} />
+                                </label>
+                              </div>
+                            ) : (
+                              <label className="h-32 rounded-2xl border-2 border-dashed border-gray-300 hover:border-blue-500 hover:bg-blue-50 flex flex-col items-center justify-center text-slate-400 hover:text-blue-600 cursor-pointer transition-all">
+                                <UploadCloud size={32} className="mb-3" />
+                                <span className="text-xs font-bold uppercase tracking-widest">Subir</span>
+                                <input type="file" accept="image/*,.pdf" className="hidden" onChange={(e) => handleUploadFile(e, 'certificado', cert.id)} />
+                              </label>
+                            )}
+                          </div>
+
+                          <div className="flex-1 space-y-4 w-full pr-8">
+                            <div><label className="block text-xs font-bold text-slate-400 mb-2 ml-1">Nombre del Documento</label><input type="text" value={cert.nombre} onChange={e => setCertificados(certificados.map(x => x.id === cert.id ? {...x, nombre: e.target.value} : x))} className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl font-semibold outline-none focus:border-blue-500 focus:bg-white transition-all"/></div>
+                            <div><label className="block text-xs font-bold text-slate-400 mb-2 ml-1">Institución Emisora</label><input type="text" value={cert.institucion} onChange={e => setCertificados(certificados.map(x => x.id === cert.id ? {...x, institucion: e.target.value} : x))} className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl font-semibold outline-none focus:border-blue-500 focus:bg-white transition-all"/></div>
+                          </div>
+                        </div>
+                      ))}
+                      <button onClick={() => setCertificados([...certificados, { id: crypto.randomUUID(), nombre: '', institucion: '', url_archivo: '' }])} className="w-full py-5 border-2 border-dashed border-gray-300 rounded-[2rem] text-slate-500 font-bold flex items-center justify-center gap-2 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-all">
+                        <Plus size={20} /> Añadir Certificado
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* VISTA 2: DESCARGAR CV OFICIAL */}
+        {sidebarView === 'descargar' && (
+          <div className="flex-1 overflow-y-auto bg-slate-50 p-6 lg:p-10 flex flex-col items-center">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+              className="w-full max-w-2xl bg-white rounded-[3rem] p-8 sm:p-12 shadow-xl shadow-slate-200 border border-slate-100 flex flex-col items-center text-center mt-10"
+            >
+              <div className="w-24 h-24 bg-gradient-to-tr from-blue-600 to-cyan-500 rounded-[2rem] flex items-center justify-center text-white mb-8 shadow-lg shadow-blue-500/40 rotate-12">
+                <div className="-rotate-12"><FileText size={48} /></div>
+              </div>
+              
+              <h2 className="text-3xl font-black text-slate-900 tracking-tight mb-2">Tu Currículum Está Listo</h2>
+              <p className="text-slate-500 mb-8 max-w-md">Hemos generado un documento profesional con todos los datos que guardaste en la sección de edición.</p>
+
+              {/* Card Resumen */}
+              <div className="bg-slate-50 border border-slate-100 rounded-2xl p-6 w-full mb-8 text-left flex items-center gap-6">
+                {perfil.foto_url ? ( <img src={perfil.foto_url} className="w-16 h-16 rounded-full object-cover shadow-sm shrink-0" /> ) : ( <div className="w-16 h-16 rounded-full bg-slate-200 flex items-center justify-center shrink-0"><User size={24} className="text-slate-400"/></div> )}
+                <div>
+                  <h4 className="font-bold text-slate-900 uppercase">{perfil.nombres} {perfil.apellidos}</h4>
+                  <p className="text-xs text-slate-500 font-mono mt-1">DNI: {dni}</p>
+                  <div className="flex gap-2 mt-2">
+                    <span className="text-[10px] font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded uppercase">{experiencias.length} Experiencias</span>
+                    <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded uppercase">{educacion.length} Estudios</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* NUEVO: CHECK DE PRIVACIDAD */}
+              <div className="w-full bg-blue-50/50 border border-blue-100 rounded-2xl p-5 mb-8 flex gap-4 text-left cursor-pointer transition-colors hover:bg-blue-50" onClick={() => setAceptaTerminos(!aceptaTerminos)}>
+                <div className={`w-6 h-6 rounded-md flex items-center justify-center border-2 shrink-0 transition-colors mt-0.5 ${aceptaTerminos ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-blue-200 text-transparent'}`}>
+                  <CheckCircle2 size={16} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-blue-900 flex items-center gap-1.5"><ShieldCheck size={16}/> Política de Privacidad de Datos</h4>
+                  <p className="text-xs text-blue-700/70 mt-1 leading-relaxed">Declaro bajo juramento que los datos ingresados son verdaderos. Autorizo a RUAG a almacenar mi información exclusivamente para procesos de reclutamiento y selección, según la Ley de Protección de Datos Personales.</p>
+                </div>
+              </div>
+
+              {/* Botón Descargar (Se activa solo si acepta términos) */}
+              <button 
+                onClick={descargarMiCV}
+                className={`group relative inline-flex h-16 items-center justify-center overflow-hidden rounded-2xl px-10 font-medium shadow-xl transition-all w-full sm:w-auto
+                  ${aceptaTerminos ? 'bg-slate-900 text-neutral-50 hover:bg-black hover:scale-105 active:scale-95' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
+              >
+                {aceptaTerminos && <span className="absolute h-0 w-0 rounded-full bg-blue-600 transition-all duration-300 ease-out group-hover:h-56 group-hover:w-full"></span>}
+                <span className="relative flex items-center gap-3 font-bold text-lg tracking-wide"><Download size={22} /> Descargar Mi CV Oficial</span>
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </main>
+    </div>
+  )
+}
