@@ -7,13 +7,14 @@ import { Toaster, toast } from 'sonner'
 import { 
   Search, Users, FileText, Download, Calendar, Eye, 
   LayoutDashboard, Building, Inbox, User, Mail, Phone, 
-  ChevronDown, Sparkles, Link as LinkIcon, ExternalLink, X, MapPin, Briefcase, GraduationCap, FileBadge, Filter, Save, Lock, Loader2
+  ChevronDown, Sparkles, Link as LinkIcon, ExternalLink, X, MapPin, 
+  Briefcase, GraduationCap, FileBadge, Filter, Save, Lock, Loader2, Zap, Globe, Star
 } from 'lucide-react'
 
 // --- LIBRERÍAS PARA EL PDF ---
 import { Document, Page, Text, View, StyleSheet, Image as PdfImage, pdf } from '@react-pdf/renderer'
 
-// --- INTERFAZ DE DATOS ---
+// --- INTERFAZ DE DATOS ACTUALIZADA ---
 interface Postulante {
   id: string
   dni: string
@@ -24,86 +25,161 @@ interface Postulante {
   direccion: string
   foto_url: string
   perfil_profesional: string
+  titulo_profesional?: string
+  linkedin?: string
+  colegiatura?: string
   estado: string
   notas_internas?: string
   created_at: string
   experiencias?: any[]
   educacion?: any[]
   certificados?: any[]
+  software?: any[]
+  idiomas?: any[]
+  logros?: any[]
 }
 
-// --- ESTILOS DEL PDF ---
+// --- ESTILOS DEL PDF (Plantilla 2 Columnas Premium Sincronizada) ---
 const pdfStyles = StyleSheet.create({
   page: { flexDirection: 'row', backgroundColor: '#ffffff', fontFamily: 'Helvetica' },
-  leftColumn: { width: '35%', backgroundColor: '#0f172a', padding: 30, color: '#f8fafc' },
-  photoContainer: { alignItems: 'center', marginBottom: 20 },
-  photo: { width: 110, height: 110, borderRadius: 55, objectFit: 'cover', border: '3px solid #334155' },
-  nameLeft: { fontSize: 22, fontWeight: 'bold', textAlign: 'center', marginTop: 10, color: '#ffffff', textTransform: 'uppercase' },
-  roleLeft: { fontSize: 10, textAlign: 'center', color: '#94a3b8', marginTop: 4, letterSpacing: 1 },
-  sectionLeft: { marginTop: 30 },
-  titleLeft: { fontSize: 12, fontWeight: 'bold', color: '#38bdf8', borderBottom: '1px solid #334155', paddingBottom: 5, marginBottom: 10, letterSpacing: 1 },
-  textLeft: { fontSize: 10, color: '#cbd5e1', marginBottom: 8, lineHeight: 1.4 },
-  rightColumn: { width: '65%', padding: 40, paddingTop: 45 },
-  sectionRight: { marginBottom: 25 },
-  titleRight: { fontSize: 14, fontWeight: 'bold', color: '#0f172a', borderBottom: '2px solid #e2e8f0', paddingBottom: 5, marginBottom: 15, textTransform: 'uppercase', letterSpacing: 1 },
-  textBodyRight: { fontSize: 10, color: '#475569', lineHeight: 1.6, textAlign: 'justify' },
-  itemBlock: { marginBottom: 15 },
-  itemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 3 },
-  itemTitle: { fontSize: 12, fontWeight: 'bold', color: '#1e293b', width: '70%' },
+  leftColumn: { width: '32%', backgroundColor: '#f8fafc', padding: 25, borderRight: '1px solid #e2e8f0' },
+  photoContainer: { alignItems: 'center', marginBottom: 25 },
+  photo: { width: 120, height: 120, borderRadius: 60, objectFit: 'cover', marginBottom: 15, border: '4px solid #ffffff' },
+  sectionLeft: { marginBottom: 25 },
+  titleLeft: { fontSize: 11, fontWeight: 'bold', color: '#0f172a', borderBottom: '1px solid #cbd5e1', paddingBottom: 4, marginBottom: 12, letterSpacing: 1.5 },
+  textLeft: { fontSize: 9, color: '#475569', marginBottom: 6, lineHeight: 1.4 },
+  textLeftBold: { fontSize: 9, fontWeight: 'bold', color: '#1e293b', marginBottom: 2 },
+  
+  skillBlock: { marginBottom: 8 },
+  skillHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 },
+  skillName: { fontSize: 9, color: '#334155', fontWeight: 'bold' },
+  barBg: { height: 4, backgroundColor: '#e2e8f0', borderRadius: 2, overflow: 'hidden' },
+  barFill: { height: '100%', backgroundColor: '#3b82f6', borderRadius: 2 },
+
+  rightColumn: { width: '68%', padding: 35, paddingTop: 40 },
+  headerRight: { marginBottom: 25 },
+  nameRight: { fontSize: 26, fontWeight: 'bold', color: '#0f172a', textTransform: 'uppercase', letterSpacing: -0.5 },
+  titleRightMain: { fontSize: 13, fontWeight: 'bold', color: '#2563eb', marginTop: 5, letterSpacing: 2, textTransform: 'uppercase' },
+  colegiatura: { fontSize: 10, color: '#64748b', marginTop: 4, fontWeight: 'bold' },
+  
+  contactRow: { flexDirection: 'row', gap: 15, marginTop: 12, flexWrap: 'wrap' },
+  contactItem: { fontSize: 9, color: '#475569' },
+
+  sectionRight: { marginBottom: 20 },
+  titleRight: { fontSize: 12, fontWeight: 'bold', color: '#0f172a', borderBottom: '2px solid #2563eb', paddingBottom: 4, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 },
+  textBodyRight: { fontSize: 9.5, color: '#334155', lineHeight: 1.6, textAlign: 'justify' },
+  
+  itemBlock: { marginBottom: 14 },
+  itemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 2 },
+  itemTitle: { fontSize: 11, fontWeight: 'bold', color: '#0f172a', width: '70%' },
   itemDate: { fontSize: 9, color: '#2563eb', fontWeight: 'bold', width: '30%', textAlign: 'right' },
-  itemSubtitle: { fontSize: 10, color: '#64748b', marginBottom: 5, fontStyle: 'italic' },
+  itemSubtitle: { fontSize: 10, color: '#64748b', marginBottom: 4, fontStyle: 'italic' },
+  
+  bulletPoint: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4 },
+  bulletDot: { fontSize: 10, color: '#2563eb', marginRight: 5, marginTop: -1 },
+  bulletText: { fontSize: 9.5, color: '#475569', lineHeight: 1.5, flex: 1 },
 })
 
 const CVPdfDocument = ({ data }: { data: Postulante }) => (
   <Document>
     <Page size="A4" style={pdfStyles.page}>
+      
+      {/* COLUMNA IZQUIERDA */}
       <View style={pdfStyles.leftColumn}>
         <View style={pdfStyles.photoContainer}>
-          {data.foto_url ? <PdfImage src={data.foto_url} style={pdfStyles.photo} /> : null}
-          <Text style={pdfStyles.nameLeft}>{data.nombres}</Text>
-          <Text style={pdfStyles.nameLeft}>{data.apellidos}</Text>
-          <Text style={pdfStyles.roleLeft}>DNI: {data.dni}</Text>
+          {data.foto_url && <PdfImage src={data.foto_url} style={pdfStyles.photo} />}
         </View>
-        <View style={pdfStyles.sectionLeft}>
-          <Text style={pdfStyles.titleLeft}>CONTACTO</Text>
-          <Text style={pdfStyles.textLeft}>📞 {data.telefono || 'No registrado'}</Text>
-          <Text style={pdfStyles.textLeft}>✉️ {data.correo || 'No registrado'}</Text>
-          <Text style={pdfStyles.textLeft}>📍 {data.direccion || 'No registrado'}</Text>
-        </View>
-        <View style={pdfStyles.sectionLeft}>
-          <Text style={pdfStyles.titleLeft}>PERFIL PROFESIONAL</Text>
-          <Text style={pdfStyles.textLeft}>{data.perfil_profesional || 'Sin descripción registrada.'}</Text>
-        </View>
+
+        {data.educacion && data.educacion.length > 0 && (
+          <View style={pdfStyles.sectionLeft}>
+            <Text style={pdfStyles.titleLeft}>EDUCACIÓN</Text>
+            {data.educacion.map((edu: any, i: number) => (
+              <View key={i} style={{ marginBottom: 10 }}>
+                <Text style={pdfStyles.textLeftBold}>{edu.institucion}</Text>
+                <Text style={pdfStyles.textLeft}>{edu.titulo}</Text>
+                <Text style={{ fontSize: 8, color: '#94a3b8' }}>{edu.anio_inicio} - {edu.anio_fin}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {data.software && data.software.length > 0 && (
+          <View style={pdfStyles.sectionLeft}>
+            <Text style={pdfStyles.titleLeft}>SOFTWARE</Text>
+            {data.software.map((sw: any, i: number) => (
+              <View key={i} style={pdfStyles.skillBlock}>
+                <View style={pdfStyles.skillHeader}>
+                  <Text style={pdfStyles.skillName}>{sw.nombre}</Text>
+                  <Text style={{fontSize: 7, color: '#94a3b8'}}>{sw.nivel}</Text>
+                </View>
+                <View style={pdfStyles.barBg}><View style={[pdfStyles.barFill, { width: `${sw.porcentaje}%` }]} /></View>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {data.idiomas && data.idiomas.length > 0 && (
+          <View style={pdfStyles.sectionLeft}>
+            <Text style={pdfStyles.titleLeft}>IDIOMAS</Text>
+            {data.idiomas.map((idioma: any, i: number) => (
+              <View key={i} style={pdfStyles.skillBlock}>
+                <View style={pdfStyles.skillHeader}>
+                  <Text style={pdfStyles.skillName}>{idioma.nombre}</Text>
+                  <Text style={{fontSize: 7, color: '#94a3b8'}}>{idioma.nivel}</Text>
+                </View>
+                <View style={pdfStyles.barBg}><View style={[pdfStyles.barFill, { width: `${idioma.porcentaje}%` }]} /></View>
+              </View>
+            ))}
+          </View>
+        )}
       </View>
+
+      {/* COLUMNA DERECHA */}
       <View style={pdfStyles.rightColumn}>
+        <View style={pdfStyles.headerRight}>
+          <Text style={pdfStyles.nameRight}>{data.nombres} {data.apellidos}</Text>
+          {data.titulo_profesional && <Text style={pdfStyles.titleRightMain}>{data.titulo_profesional}</Text>}
+          {data.colegiatura && <Text style={pdfStyles.colegiatura}>{data.colegiatura}</Text>}
+          
+          <View style={pdfStyles.contactRow}>
+            {data.correo && <Text style={pdfStyles.contactItem}>✉ {data.correo}</Text>}
+            {data.telefono && <Text style={pdfStyles.contactItem}>✆ {data.telefono}</Text>}
+            {data.direccion && <Text style={pdfStyles.contactItem}>📍 {data.direccion}</Text>}
+            {data.linkedin && <Text style={pdfStyles.contactItem}>in/ {data.linkedin}</Text>}
+          </View>
+        </View>
+
+        {data.perfil_profesional && (
+          <View style={pdfStyles.sectionRight}>
+            <Text style={pdfStyles.titleRight}>Perfil Profesional</Text>
+            <Text style={pdfStyles.textBodyRight}>{data.perfil_profesional}</Text>
+          </View>
+        )}
+
+        {data.logros && data.logros.length > 0 && (
+          <View style={pdfStyles.sectionRight}>
+            <Text style={pdfStyles.titleRight}>Logros Clave</Text>
+            {data.logros.map((logro: any, i: number) => (
+              <View key={i} style={pdfStyles.bulletPoint}>
+                <Text style={pdfStyles.bulletDot}>•</Text>
+                <Text style={pdfStyles.bulletText}>{logro.descripcion}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
         <View style={pdfStyles.sectionRight}>
           <Text style={pdfStyles.titleRight}>Experiencia Laboral</Text>
-          {data.experiencias && data.experiencias.length > 0 ? (
-            data.experiencias.map((exp: any, i: number) => (
-              <View key={i} style={pdfStyles.itemBlock}>
-                <View style={pdfStyles.itemHeader}>
-                  <Text style={pdfStyles.itemTitle}>{exp.cargo}</Text>
-                  <Text style={pdfStyles.itemDate}>{exp.fecha_inicio} - {exp.fecha_fin || 'Actual'}</Text>
-                </View>
-                <Text style={pdfStyles.itemSubtitle}>{exp.empresa}</Text>
-                <Text style={pdfStyles.textBodyRight}>{exp.descripcion}</Text>
+          {data.experiencias && data.experiencias.length > 0 ? data.experiencias.map((exp: any, i: number) => (
+            <View key={i} style={pdfStyles.itemBlock}>
+              <View style={pdfStyles.itemHeader}>
+                <Text style={pdfStyles.itemTitle}>{exp.cargo}</Text>
+                <Text style={pdfStyles.itemDate}>{exp.fecha_inicio} / {exp.fecha_fin || 'Actual'}</Text>
               </View>
-            ))
-          ) : <Text style={pdfStyles.textBodyRight}>No registra experiencia laboral.</Text>}
-        </View>
-        <View style={pdfStyles.sectionRight}>
-          <Text style={pdfStyles.titleRight}>Educación y Formación</Text>
-          {data.educacion && data.educacion.length > 0 ? (
-            data.educacion.map((edu: any, i: number) => (
-              <View key={i} style={pdfStyles.itemBlock}>
-                <View style={pdfStyles.itemHeader}>
-                  <Text style={pdfStyles.itemTitle}>{edu.titulo}</Text>
-                  <Text style={pdfStyles.itemDate}>{edu.anio_inicio} - {edu.anio_fin}</Text>
-                </View>
-                <Text style={pdfStyles.itemSubtitle}>{edu.institucion} ({edu.nivel})</Text>
-              </View>
-            ))
-          ) : <Text style={pdfStyles.textBodyRight}>No registra educación previa.</Text>}
+              <Text style={pdfStyles.itemSubtitle}>{exp.empresa}</Text>
+              <Text style={pdfStyles.textBodyRight}>{exp.descripcion}</Text>
+            </View>
+          )) : <Text style={pdfStyles.textBodyRight}>No registra experiencia laboral.</Text>}
         </View>
       </View>
     </Page>
@@ -136,12 +212,10 @@ const StatCard = ({ icon: Icon, label, value, iconColor }: any) => (
   </div>
 )
 
-// --- COMPONENTE: SELECTOR RADIO UIVERSE (Para el Modal) ---
 const EstadoRadio = ({ postulanteId, estadoActual, supabase, layout = 'col', onStatusChange }: { postulanteId: string, estadoActual: string, supabase: any, layout?: 'col' | 'row', onStatusChange?: (nuevoEstado: string) => void }) => {
   const [estado, setEstado] = useState(estadoActual || 'Nuevo')
   const [isUpdating, setIsUpdating] = useState(false)
 
-  // Efecto para sincronizar si se cambia desde fuera
   useEffect(() => { setEstado(estadoActual || 'Nuevo') }, [estadoActual])
 
   const handleChange = async (nuevoEstado: string) => {
@@ -150,7 +224,7 @@ const EstadoRadio = ({ postulanteId, estadoActual, supabase, layout = 'col', onS
     try {
       await supabase.from('cv_postulantes').update({ estado: nuevoEstado }).eq('id', postulanteId)
       toast.success(`Estado actualizado a ${nuevoEstado}`)
-      if (onStatusChange) onStatusChange(nuevoEstado) // Actualiza el estado principal instantáneamente
+      if (onStatusChange) onStatusChange(nuevoEstado)
     } catch (error) {
       toast.error('Error al actualizar el estado')
       setEstado(estadoActual)
@@ -170,31 +244,20 @@ const EstadoRadio = ({ postulanteId, estadoActual, supabase, layout = 'col', onS
     <div className={`flex ${layout === 'col' ? 'flex-col space-y-2.5' : 'flex-row flex-wrap gap-4 bg-gray-50/80 p-2.5 rounded-2xl border border-gray-100'}`}>
       {options.map((opt) => (
         <label key={opt.name} className={`relative flex items-center cursor-pointer group ${isUpdating ? 'opacity-50 pointer-events-none' : ''}`}>
-          <input 
-            className="sr-only peer" 
-            name={`status-${postulanteId}-${layout}`} 
-            type="radio" 
-            value={opt.name}
-            checked={estado === opt.name}
-            onChange={() => handleChange(opt.name)}
-          />
+          <input className="sr-only peer" name={`status-${postulanteId}-${layout}`} type="radio" value={opt.name} checked={estado === opt.name} onChange={() => handleChange(opt.name)} />
           <div className={`w-5 h-5 bg-transparent border-2 rounded-full peer-hover:shadow-lg peer-checked:shadow-lg transition duration-300 ease-in-out ${opt.classes.split(' text-')[0]}`} />
-          <span className={`ml-2 text-[11px] font-bold uppercase tracking-wider transition-colors ${estado === opt.name ? opt.classes.split(' ').pop() : 'text-slate-400 group-hover:text-slate-600'}`}>
-            {opt.name}
-          </span>
+          <span className={`ml-2 text-[11px] font-bold uppercase tracking-wider transition-colors ${estado === opt.name ? opt.classes.split(' ').pop() : 'text-slate-400 group-hover:text-slate-600'}`}>{opt.name}</span>
         </label>
       ))}
     </div>
   )
 }
 
-// --- COMPONENTE: DROPDOWN DE ESTADO (Para la Tabla Principal) ---
 const EstadoDropdown = ({ postulanteId, estadoActual, supabase, onStatusChange }: { postulanteId: string, estadoActual: string, supabase: any, onStatusChange?: (nuevoEstado: string) => void }) => {
   const [estado, setEstado] = useState(estadoActual || 'Nuevo')
   const [isOpen, setIsOpen] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
 
-  // Sincronizar si el estado cambia desde afuera (ej. desde el modal)
   useEffect(() => { setEstado(estadoActual || 'Nuevo') }, [estadoActual])
 
   const opciones = ['Nuevo', 'En Proceso', 'Contratado', 'Descartado']
@@ -205,7 +268,6 @@ const EstadoDropdown = ({ postulanteId, estadoActual, supabase, onStatusChange }
     'Contratado': 'border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100',
     'Descartado': 'border-red-200 text-red-700 bg-red-50 hover:bg-red-100'
   }
-
   const dotTheme: Record<string, string> = {
     'Nuevo': 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]',
     'En Proceso': 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]',
@@ -221,7 +283,7 @@ const EstadoDropdown = ({ postulanteId, estadoActual, supabase, onStatusChange }
     try {
       await supabase.from('cv_postulantes').update({ estado: nuevoEstado }).eq('id', postulanteId)
       toast.success(`Estado actualizado a ${nuevoEstado}`)
-      if (onStatusChange) onStatusChange(nuevoEstado) // Actualiza el estado principal instantáneamente
+      if (onStatusChange) onStatusChange(nuevoEstado)
     } catch (error) {
       toast.error('Error al actualizar el estado')
       setEstado(estadoActual)
@@ -325,7 +387,7 @@ export default function AdminDashboard() {
   }
 
   const handleDownloadPDF = async (postulante: Postulante) => {
-    const toastId = toast.loading('Generando diseño del PDF...')
+    const toastId = toast.loading('Generando diseño del PDF Premium...')
     try {
       const blob = await pdf(<CVPdfDocument data={postulante} />).toBlob()
       const url = URL.createObjectURL(blob)
@@ -346,13 +408,8 @@ export default function AdminDashboard() {
     setGuardandoNota(true)
     try {
       await supabase.from('cv_postulantes').update({ notas_internas: notaLocal }).eq('id', previewData.id)
-      
-      // Actualizamos los datos del modal
       setPreviewData({...previewData, notas_internas: notaLocal})
-      
-      // Actualizamos la tabla principal al instante para no tener que refrescar
       setPostulantes(postulantes.map(p => p.id === previewData.id ? { ...p, notas_internas: notaLocal } : p))
-      
       toast.success('Nota interna guardada con éxito')
     } catch (error) {
       toast.error('Hubo un error al guardar la nota')
@@ -366,11 +423,8 @@ export default function AdminDashboard() {
     setNotaLocal(p.notas_internas || '')
   }
 
-  // --- SINCRONIZACIÓN DEL ESTADO AL INSTANTE ---
   const handleEstadoChangeGlobal = (id: string, nuevoEstado: string) => {
-    // Si cambia en la tabla, actualiza la lista principal
     setPostulantes(postulantes.map(p => p.id === id ? { ...p, estado: nuevoEstado } : p))
-    // Si el modal está abierto y es el mismo usuario, actualiza el modal también
     if (previewData && previewData.id === id) {
       setPreviewData({ ...previewData, estado: nuevoEstado })
     }
@@ -389,26 +443,64 @@ export default function AdminDashboard() {
     if (!telefono) { toast.error('Este candidato no registró su celular.'); return; }
     const numLimpio = telefono.replace(/\D/g, '')
     const numFinal = numLimpio.length === 9 ? `51${numLimpio}` : numLimpio
-    const mensaje = `Hola ${nombre}, te escribimos de *RUAG*. Hemos revisado tu perfil en nuestro Portal de Empleo y nos gustaría conversar contigo...`
+    const mensaje = `Hola ${nombre}, te escribimos de *RUAG*. Hemos revisado tu perfil profesional y nos gustaría conversar contigo...`
     window.open(`https://wa.me/${numFinal}?text=${encodeURIComponent(mensaje)}`, '_blank')
   }
 
   if (authChecking) return <div className="h-screen bg-slate-950"></div>
 
+  // --- PANTALLA DE LOGIN ANIMADA Y FUTURISTA ---
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden font-sans">
+      <div className="min-h-screen bg-[#050b14] flex items-center justify-center p-4 relative overflow-hidden font-sans">
         <Toaster position="top-center" richColors />
-        <div className="absolute w-[600px] h-[600px] bg-blue-600/20 blur-[120px] rounded-full top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
-        <div className="absolute w-[400px] h-[400px] bg-emerald-500/10 blur-[100px] rounded-full bottom-0 right-0 pointer-events-none"></div>
-        <motion.div initial={{ opacity: 0, y: 20, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.5, ease: "easeOut" }} className="bg-slate-900/80 backdrop-blur-2xl rounded-[2rem] p-8 sm:p-10 shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-slate-800 w-full max-w-md relative z-10">
-          <div className="flex justify-center mb-6"><div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-cyan-500 text-white rounded-[1.5rem] flex items-center justify-center shadow-lg shadow-blue-500/30"><Lock size={36} /></div></div>
-          <h2 className="text-2xl font-black text-center text-white mb-2 tracking-tight">Acceso Restringido</h2>
-          <p className="text-center text-slate-400 text-sm mb-8 font-medium">Panel exclusivo para Recursos Humanos de RUAG.</p>
-          <form onSubmit={handleLogin} className="space-y-6">
-            <div><input type="password" placeholder="CONTRASEÑA..." value={passInput} onChange={e => setPassInput(e.target.value)} className="w-full text-center tracking-[0.5em] font-black text-xl px-4 py-4 bg-slate-950/50 border-2 border-slate-800 rounded-2xl text-white focus:border-blue-500 focus:bg-slate-900 transition-all outline-none placeholder:text-slate-600 placeholder:tracking-widest placeholder:text-sm placeholder:font-bold" autoFocus/></div>
-            <button type="submit" disabled={isAuthenticating || passInput.length < 4} className="w-full bg-blue-600 text-white font-bold text-lg py-4 rounded-2xl shadow-lg shadow-blue-900/50 hover:bg-blue-500 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed">
-              {isAuthenticating ? <Loader2 size={24} className="animate-spin"/> : 'Desbloquear Sistema'}
+        
+        {/* Esferas de luz flotantes animadas */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <motion.div animate={{ rotate: 360, scale: [1, 1.2, 1] }} transition={{ duration: 30, repeat: Infinity, ease: "linear" }} className="absolute -top-[300px] -left-[300px] w-[800px] h-[800px] bg-gradient-to-br from-blue-600/20 to-transparent rounded-full blur-[100px]" />
+          <motion.div animate={{ rotate: -360, scale: [1, 1.5, 1] }} transition={{ duration: 40, repeat: Infinity, ease: "linear" }} className="absolute -bottom-[300px] -right-[300px] w-[800px] h-[800px] bg-gradient-to-tl from-emerald-500/10 to-transparent rounded-full blur-[100px]" />
+        </div>
+
+        <motion.div 
+          initial={{ opacity: 0, y: 30, rotateX: 10 }} 
+          animate={{ opacity: 1, y: 0, rotateX: 0 }} 
+          transition={{ type: "spring", damping: 20, stiffness: 100 }} 
+          className="bg-white/5 backdrop-blur-2xl rounded-[3rem] p-10 sm:p-12 shadow-[0_0_50px_rgba(37,99,235,0.15)] border border-white/10 w-full max-w-md relative z-10"
+        >
+          <div className="flex justify-center mb-8">
+            <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-cyan-400 text-white rounded-3xl flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.4)] rotate-12 group-hover:rotate-0 transition-transform">
+              <Lock size={40} className="-rotate-12" />
+            </div>
+          </div>
+          
+          <h2 className="text-3xl font-black text-center text-white mb-2 tracking-tight">Acceso Seguro</h2>
+          <p className="text-center text-slate-400 text-sm mb-10 font-medium">Credenciales requeridas por Recursos Humanos.</p>
+          
+          <form onSubmit={handleLogin} className="space-y-8">
+            <div className="relative group">
+              <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none text-slate-500 group-focus-within:text-blue-400 transition-colors">
+                <Lock size={20} />
+              </div>
+              <input 
+                type="password" 
+                placeholder="Ingresa la clave..." 
+                value={passInput} 
+                onChange={e => setPassInput(e.target.value)} 
+                className="w-full pl-14 pr-5 py-5 bg-black/40 border border-white/10 rounded-2xl text-white font-medium focus:border-blue-500 focus:bg-black/60 focus:ring-4 focus:ring-blue-500/20 transition-all outline-none placeholder:text-slate-600 tracking-widest shadow-inner" 
+                autoFocus
+              />
+            </div>
+            
+            <button 
+              type="submit" 
+              disabled={isAuthenticating || passInput.length < 4} 
+              className="relative w-full overflow-hidden bg-white text-slate-900 font-black text-lg py-5 rounded-2xl hover:bg-gray-100 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed group shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+            >
+              {isAuthenticating ? (
+                <><Loader2 size={24} className="animate-spin text-blue-600"/> <span className="text-slate-500">Verificando...</span></>
+              ) : (
+                <>Desbloquear Panel <ChevronDown size={20} className="-rotate-90 group-hover:translate-x-1 transition-transform"/></>
+              )}
             </button>
           </form>
         </motion.div>
@@ -421,19 +513,18 @@ export default function AdminDashboard() {
       <Toaster position="bottom-right" richColors />
       <AnimatePresence>{loading && <SplashLoader />}</AnimatePresence>
 
-      {/* --- MODAL DE VISTA PREVIA --- */}
+      {/* --- MODAL DE VISTA PREVIA (AHORA MUESTRA HABILIDADES, SOFTWARE Y LOGROS) --- */}
       <AnimatePresence>
         {previewData && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6 bg-slate-900/40 backdrop-blur-sm">
-            <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }} transition={{ type: 'spring', damping: 25, stiffness: 300 }} className="bg-white rounded-[2rem] shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden border border-gray-100">
+            <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }} transition={{ type: 'spring', damping: 25, stiffness: 300 }} className="bg-white rounded-[2rem] shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden border border-gray-100">
               
               <div className="px-8 py-5 border-b border-gray-100 flex flex-col sm:flex-row items-center justify-between bg-gray-50/50 gap-4 relative z-10">
                 <div className="flex items-center gap-3 w-full sm:w-auto">
                   <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center"><User size={20}/></div>
-                  <div><h2 className="text-lg font-bold text-slate-900">Vista Previa del Postulante</h2><p className="text-xs text-slate-500 font-mono">DNI: {previewData.dni}</p></div>
+                  <div><h2 className="text-lg font-bold text-slate-900">Perfil del Candidato</h2><p className="text-xs text-slate-500 font-mono">DNI: {previewData.dni}</p></div>
                 </div>
                 <div className="flex items-center gap-4 w-full sm:w-auto overflow-x-auto pb-2 sm:pb-0">
-                  {/* Selector con Radio Buttons en el Modal (SIN EL MENÚ DESPLEGABLE) */}
                   <EstadoRadio 
                     postulanteId={previewData.id} 
                     estadoActual={previewData.estado} 
@@ -446,19 +537,22 @@ export default function AdminDashboard() {
               </div>
 
               <div className="flex-1 overflow-y-auto p-8 scrollbar-thin scrollbar-thumb-gray-200">
-                <div className="flex flex-col sm:flex-row gap-8 items-start mb-8">
-                  {previewData.foto_url ? ( <img src={previewData.foto_url} alt="Foto" className="w-32 h-32 rounded-2xl object-cover border-4 border-gray-50 shadow-md shrink-0" /> ) : ( <div className="w-32 h-32 rounded-2xl bg-gray-100 border-4 border-gray-50 flex items-center justify-center text-gray-400 shrink-0"><User size={40}/></div> )}
+                <div className="flex flex-col md:flex-row gap-8 items-start mb-8">
+                  {previewData.foto_url ? ( <img src={previewData.foto_url} alt="Foto" className="w-40 h-40 rounded-full object-cover border-4 border-white shadow-lg shrink-0" /> ) : ( <div className="w-40 h-40 rounded-full bg-gray-100 border-4 border-white shadow-lg flex items-center justify-center text-gray-400 shrink-0"><User size={50}/></div> )}
                   <div className="space-y-3 w-full overflow-hidden">
                     <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tight leading-none">{previewData.nombres} {previewData.apellidos}</h1>
-                    <div className="flex flex-wrap gap-4 text-sm font-medium text-slate-600">
+                    {previewData.titulo_profesional && <h2 className="text-sm font-bold text-blue-600 uppercase tracking-widest">{previewData.titulo_profesional} {previewData.colegiatura && `| ${previewData.colegiatura}`}</h2>}
+                    
+                    <div className="flex flex-wrap gap-4 text-sm font-medium text-slate-600 mt-2 border-b border-gray-100 pb-4">
                       <span className="flex items-center gap-1.5"><Phone size={16} className="text-blue-500"/> {previewData.telefono || 'Sin celular'}</span>
                       <span className="flex items-center gap-1.5"><Mail size={16} className="text-blue-500"/> {previewData.correo || 'Sin correo'}</span>
                       <span className="flex items-center gap-1.5"><MapPin size={16} className="text-blue-500"/> {previewData.direccion || 'Sin dirección'}</span>
+                      {previewData.linkedin && <span className="flex items-center gap-1.5"><LinkIcon size={16} className="text-blue-500"/> in/{previewData.linkedin}</span>}
                     </div>
-                    {/* SOLUCIÓN AL TEXTO LARGO DE USUARIOS (Clase break-all añadida) */}
-                    <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-sm text-slate-600 mt-2 w-full overflow-hidden">
+
+                    <div className="text-sm text-slate-600 w-full overflow-hidden pt-2">
                       <p className="font-bold text-slate-800 mb-1 text-xs uppercase tracking-widest">Resumen Profesional</p>
-                      <p className="break-all whitespace-pre-wrap">{previewData.perfil_profesional || 'El candidato no escribió un resumen.'}</p>
+                      <p className="break-words whitespace-pre-wrap">{previewData.perfil_profesional || 'El candidato no escribió un resumen.'}</p>
                     </div>
                   </div>
                 </div>
@@ -466,7 +560,7 @@ export default function AdminDashboard() {
                 <div className="mb-8 bg-amber-50/50 border border-amber-100 rounded-2xl p-5 relative overflow-hidden">
                   <div className="absolute top-0 left-0 w-1.5 h-full bg-amber-400"></div>
                   <h3 className="text-sm font-bold text-amber-800 uppercase tracking-widest mb-3 flex items-center gap-2"><FileText size={16} className="text-amber-500"/> Notas Internas (Solo RRHH)</h3>
-                  <textarea value={notaLocal} onChange={(e) => setNotaLocal(e.target.value)} placeholder="Escribe aquí observaciones sobre la entrevista, expectativas salariales o comentarios confidenciales..." className="w-full bg-white border border-amber-200 rounded-xl p-3 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-amber-400 resize-none min-h-[80px] break-all"/>
+                  <textarea value={notaLocal} onChange={(e) => setNotaLocal(e.target.value)} placeholder="Observaciones de entrevista, expectativas salariales..." className="w-full bg-white border border-amber-200 rounded-xl p-3 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-amber-400 resize-none min-h-[80px] break-words"/>
                   <div className="flex justify-end mt-3">
                     <button onClick={guardarNotaInterna} disabled={guardandoNota || notaLocal === previewData.notas_internas} className="bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50">
                       <Save size={14} /> {guardandoNota ? 'Guardando...' : 'Guardar Nota'}
@@ -474,41 +568,82 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div>
-                    <h3 className="flex items-center gap-2 text-sm font-bold text-slate-800 uppercase tracking-widest mb-4 border-b border-gray-100 pb-2"><Briefcase size={18} className="text-blue-500"/> Experiencia Laboral</h3>
-                    <div className="space-y-4">
-                      {previewData.experiencias && previewData.experiencias.length > 0 ? previewData.experiencias.map((exp, i) => (
-                        <div key={i} className="relative pl-4 border-l-2 border-blue-100"><div className="absolute w-2 h-2 bg-blue-500 rounded-full -left-[5px] top-1.5"></div><h4 className="font-bold text-slate-900 text-sm">{exp.cargo}</h4><p className="text-xs text-blue-600 font-semibold mb-1">{exp.empresa} <span className="text-slate-400 font-normal">| {exp.fecha_inicio} - {exp.fecha_fin || 'Actual'}</span></p><p className="text-xs text-slate-600 leading-relaxed break-all">{exp.descripcion}</p></div>
-                      )) : <p className="text-sm text-slate-400 italic">No registra experiencia.</p>}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                  {/* COLUMNA PRINCIPAL (Exp, Logros, Edu) */}
+                  <div className="lg:col-span-2 space-y-8">
+                    
+                    {previewData.logros && previewData.logros.length > 0 && (
+                      <div>
+                        <h3 className="flex items-center gap-2 text-sm font-bold text-slate-800 uppercase tracking-widest mb-4 border-b border-gray-100 pb-2"><Star size={18} className="text-amber-500"/> Logros Destacados</h3>
+                        <ul className="space-y-3 pl-2">
+                          {previewData.logros.map((l, i) => (
+                            <li key={i} className="text-sm text-slate-700 relative pl-4 leading-relaxed"><span className="absolute left-0 top-2 w-1.5 h-1.5 bg-amber-500 rounded-full"></span>{l.descripcion}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    <div>
+                      <h3 className="flex items-center gap-2 text-sm font-bold text-slate-800 uppercase tracking-widest mb-4 border-b border-gray-100 pb-2"><Briefcase size={18} className="text-blue-500"/> Experiencia Laboral</h3>
+                      <div className="space-y-6">
+                        {previewData.experiencias && previewData.experiencias.length > 0 ? previewData.experiencias.map((exp, i) => (
+                          <div key={i} className="relative pl-5 border-l-2 border-blue-100"><div className="absolute w-3 h-3 bg-blue-500 rounded-full -left-[7px] top-1 border-2 border-white"></div><h4 className="font-bold text-slate-900 text-base">{exp.cargo}</h4><p className="text-xs text-blue-600 font-bold mb-2">{exp.empresa} <span className="text-slate-400 font-medium">| {exp.fecha_inicio} - {exp.fecha_fin || 'Actual'}</span></p><p className="text-sm text-slate-600 leading-relaxed break-words">{exp.descripcion}</p></div>
+                        )) : <p className="text-sm text-slate-400 italic">No registra experiencia.</p>}
+                      </div>
                     </div>
-                  </div>
-                  <div className="space-y-8">
+
                     <div>
                       <h3 className="flex items-center gap-2 text-sm font-bold text-slate-800 uppercase tracking-widest mb-4 border-b border-gray-100 pb-2"><GraduationCap size={18} className="text-emerald-500"/> Educación</h3>
                       <div className="space-y-4">
                         {previewData.educacion && previewData.educacion.length > 0 ? previewData.educacion.map((edu, i) => (
-                          <div key={i} className="relative pl-4 border-l-2 border-emerald-100"><div className="absolute w-2 h-2 bg-emerald-500 rounded-full -left-[5px] top-1.5"></div><h4 className="font-bold text-slate-900 text-sm">{edu.titulo}</h4><p className="text-xs text-slate-500">{edu.institucion} ({edu.nivel})</p><p className="text-[10px] font-bold text-slate-400 mt-0.5">{edu.anio_inicio} - {edu.anio_fin}</p></div>
+                          <div key={i} className="relative pl-5 border-l-2 border-emerald-100"><div className="absolute w-3 h-3 bg-emerald-500 rounded-full -left-[7px] top-1 border-2 border-white"></div><h4 className="font-bold text-slate-900 text-sm">{edu.titulo}</h4><p className="text-xs text-slate-600 font-medium">{edu.institucion} ({edu.nivel})</p><p className="text-[10px] font-bold text-slate-400 mt-1">{edu.anio_inicio} - {edu.anio_fin}</p></div>
                         )) : <p className="text-sm text-slate-400 italic">No registra educación.</p>}
                       </div>
                     </div>
+                  </div>
+
+                  {/* COLUMNA LATERAL (Skills y Docs) */}
+                  <div className="space-y-8 bg-slate-50 p-6 rounded-3xl border border-gray-100 h-fit">
+                    
+                    {previewData.software && previewData.software.length > 0 && (
+                      <div>
+                        <h3 className="flex items-center gap-2 text-xs font-bold text-slate-800 uppercase tracking-widest mb-4"><Zap size={16} className="text-blue-500"/> Software / Herramientas</h3>
+                        <div className="flex flex-wrap gap-2">
+                          {previewData.software.map((sw, i) => (
+                            <span key={i} className="px-3 py-1.5 bg-white border border-blue-100 text-blue-700 text-[10px] font-bold rounded-lg shadow-sm">{sw.nombre} <span className="opacity-50">({sw.nivel})</span></span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {previewData.idiomas && previewData.idiomas.length > 0 && (
+                      <div>
+                        <h3 className="flex items-center gap-2 text-xs font-bold text-slate-800 uppercase tracking-widest mb-4"><Globe size={16} className="text-emerald-500"/> Idiomas</h3>
+                        <div className="flex flex-wrap gap-2">
+                          {previewData.idiomas.map((lang, i) => (
+                            <span key={i} className="px-3 py-1.5 bg-white border border-emerald-100 text-emerald-700 text-[10px] font-bold rounded-lg shadow-sm">{lang.nombre} <span className="opacity-50">({lang.nivel})</span></span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     <div>
-                      <h3 className="flex items-center gap-2 text-sm font-bold text-slate-800 uppercase tracking-widest mb-4 border-b border-gray-100 pb-2"><FileBadge size={18} className="text-purple-500"/> Documentos Adjuntos</h3>
+                      <h3 className="flex items-center gap-2 text-xs font-bold text-slate-800 uppercase tracking-widest mb-4"><FileBadge size={16} className="text-purple-500"/> Documentos</h3>
                       <div className="flex flex-col gap-2">
                         {previewData.certificados && previewData.certificados.length > 0 ? previewData.certificados.map((cert, i) => (
-                          <a key={i} href={cert.url_archivo} target="_blank" rel="noreferrer" className="flex items-center justify-between p-3 bg-gray-50 hover:bg-purple-50 rounded-xl border border-gray-100 hover:border-purple-200 transition-colors group"><div><p className="font-bold text-sm text-slate-800 group-hover:text-purple-700">{cert.nombre}</p><p className="text-xs text-slate-500">{cert.institucion}</p></div><ExternalLink size={16} className="text-slate-400 group-hover:text-purple-500" /></a>
-                        )) : <p className="text-sm text-slate-400 italic">Sin documentos adjuntos.</p>}
+                          <a key={i} href={cert.url_archivo} target="_blank" rel="noreferrer" className="flex items-center justify-between p-3 bg-white hover:bg-purple-50 rounded-xl border border-gray-100 hover:border-purple-200 transition-colors group shadow-sm"><div><p className="font-bold text-xs text-slate-800 group-hover:text-purple-700">{cert.nombre}</p><p className="text-[10px] text-slate-500">{cert.institucion}</p></div><ExternalLink size={14} className="text-slate-400 group-hover:text-purple-500" /></a>
+                        )) : <p className="text-xs text-slate-400 italic">Sin documentos.</p>}
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="px-8 py-4 border-t border-gray-100 bg-gray-50 flex justify-between items-center gap-3">
-                <button onClick={() => abrirWhatsApp(previewData.telefono, previewData.nombres)} className="px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-green-500 hover:bg-green-600 shadow-md shadow-green-200 transition-all flex items-center gap-2"><Phone size={16} className="fill-current"/> Contactar WhatsApp</button>
-                <div className="flex gap-3">
-                  <button onClick={() => setPreviewData(null)} className="px-5 py-2.5 rounded-xl text-sm font-bold text-slate-600 hover:bg-gray-200 transition-colors">Cerrar</button>
-                  <button onClick={() => handleDownloadPDF(previewData)} className="px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-200 transition-all flex items-center gap-2"><Download size={16}/> Descargar PDF</button>
+              <div className="px-8 py-5 border-t border-gray-100 bg-gray-50 flex flex-col sm:flex-row justify-between items-center gap-4">
+                <button onClick={() => abrirWhatsApp(previewData.telefono, previewData.nombres)} className="w-full sm:w-auto px-6 py-3 rounded-xl text-sm font-bold text-white bg-green-500 hover:bg-green-600 shadow-lg shadow-green-200 transition-all flex items-center justify-center gap-2"><Phone size={18} className="fill-current"/> Contactar al Candidato</button>
+                <div className="flex gap-3 w-full sm:w-auto">
+                  <button onClick={() => setPreviewData(null)} className="flex-1 sm:flex-none px-6 py-3 rounded-xl text-sm font-bold text-slate-600 hover:bg-gray-200 transition-colors text-center">Cerrar</button>
+                  <button onClick={() => handleDownloadPDF(previewData)} className="flex-1 sm:flex-none px-6 py-3 rounded-xl text-sm font-bold text-white bg-slate-900 hover:bg-black shadow-lg shadow-slate-200 transition-all flex items-center justify-center gap-2"><Download size={18}/> Descargar PDF</button>
                 </div>
               </div>
             </motion.div>
@@ -564,7 +699,6 @@ export default function AdminDashboard() {
                       <th className="px-8 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest">Información del Candidato</th>
                       <th className="px-8 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest">Estado RRHH</th>
                       <th className="px-8 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest">Datos de Contacto</th>
-                      {/* CAMBIO: Columna de Notas en lugar de Resumen Profesional */}
                       <th className="px-8 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest">Notas de RRHH</th>
                       <th className="px-8 py-5 text-right text-xs font-bold text-slate-400 uppercase tracking-widest">Acciones</th>
                     </tr>
@@ -577,17 +711,15 @@ export default function AdminDashboard() {
                         <motion.tr key={p.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.02 + 0.1 }} className="hover:bg-gray-50 transition-colors group cursor-default relative">
                           <td className="px-8 py-6 relative z-10">
                             <div className="absolute left-0 inset-y-0 w-1 bg-blue-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                            <div className="flex items-center gap-5">{p.foto_url ? (<img src={p.foto_url} alt="Foto" className="w-16 h-16 rounded-2xl object-cover border border-gray-100 group-hover:border-blue-100 transition-colors shadow-inner" />) : (<div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center font-black text-slate-500 border border-gray-100 group-hover:bg-blue-50 group-hover:border-blue-100 transition-colors">{p.nombres.charAt(0)}{p.apellidos.charAt(0)}</div>)}<div><p className="font-extrabold text-slate-950 text-base leading-tight uppercase tracking-tight group-hover:text-blue-700 transition-colors">{p.apellidos}, {p.nombres}</p><div className="flex items-center gap-2 mt-2"><User size={12} className="text-slate-400"/><div className="text-[11px] font-mono text-slate-600 bg-gray-100 p-1 px-2 rounded-lg border border-gray-100 shadow-inner">DNI: {p.dni}</div></div></div></div>
+                            <div className="flex items-center gap-5">{p.foto_url ? (<img src={p.foto_url} alt="Foto" className="w-16 h-16 rounded-2xl object-cover border border-gray-100 group-hover:border-blue-100 transition-colors shadow-inner" />) : (<div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center font-black text-slate-500 border border-gray-100 group-hover:bg-blue-50 group-hover:border-blue-100 transition-colors">{p.nombres.charAt(0)}{p.apellidos.charAt(0)}</div>)}<div><p className="font-extrabold text-slate-950 text-base leading-tight uppercase tracking-tight group-hover:text-blue-700 transition-colors">{p.apellidos}, {p.nombres}</p><p className="text-[10px] font-bold text-blue-600 uppercase mt-0.5">{p.titulo_profesional || 'Perfil en revisión'}</p><div className="flex items-center gap-2 mt-2"><User size={12} className="text-slate-400"/><div className="text-[11px] font-mono text-slate-600 bg-gray-100 p-1 px-2 rounded-lg border border-gray-100 shadow-inner">DNI: {p.dni}</div></div></div></div>
                           </td>
                           <td className="px-8 py-6 relative z-10">
-                            {/* Selector Dropdown en la Tabla Principal. Ahora sincroniza el estado al instante. */}
                             <EstadoDropdown postulanteId={p.id} estadoActual={p.estado} supabase={supabase} onStatusChange={(nuevo) => handleEstadoChangeGlobal(p.id, nuevo)} />
                           </td>
                           <td className="px-8 py-6 relative z-10 space-y-2"><div className="flex items-center gap-2.5 text-slate-700"><Phone size={14} className="text-slate-400"/><p className="text-sm font-semibold">{p.telefono || '-'}</p></div><div className="flex items-center gap-2.5 text-slate-500"><Mail size={14} className="text-slate-400"/><p className="text-xs truncate max-w-[200px] font-medium">{p.correo || '-'}</p></div></td>
                           
-                          {/* CAMBIO: Tabla Principal muestra las Notas de RRHH (Truncado con break-all) */}
                           <td className="px-8 py-6 relative z-10">
-                            <p className="text-xs text-amber-700 bg-amber-50 px-5 py-3 rounded-2xl border border-amber-100 inline-block line-clamp-2 max-w-[250px] font-medium leading-relaxed shadow-sm shadow-inner break-all" title={p.notas_internas}>
+                            <p className="text-xs text-amber-700 bg-amber-50 px-5 py-3 rounded-2xl border border-amber-100 inline-block line-clamp-2 max-w-[250px] font-medium leading-relaxed shadow-sm shadow-inner break-words" title={p.notas_internas}>
                               {p.notas_internas ? p.notas_internas : 'Sin notas registradas.'}
                             </p>
                           </td>

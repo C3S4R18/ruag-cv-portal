@@ -5,76 +5,160 @@ import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Toaster, toast } from 'sonner'
+import confetti from 'canvas-confetti'
 import { 
   User, Briefcase, GraduationCap, FileBadge, 
-  Plus, Trash2, UploadCloud, ChevronLeft, Loader2, Image as ImageIcon, FileText, 
-  LayoutDashboard, Download, CheckCircle2, FileDown, ShieldCheck, MapPin
+  Plus, Trash2, UploadCloud, ChevronLeft, Loader2, ImageIcon, FileText, 
+  LayoutDashboard, Download, CheckCircle2, FileDown, ShieldCheck, MapPin, 
+  Zap, Award, X, Globe, Star, Linkedin
 } from 'lucide-react'
 
 // --- LIBRERÍAS PARA EL PDF ---
 import { Document, Page, Text, View, StyleSheet, Image as PdfImage, pdf } from '@react-pdf/renderer'
 
-// --- ESTILOS DEL PDF (Plantilla Corporativa a 2 Columnas) ---
+// --- ESTILOS DEL PDF (Plantilla Mautino - 2 Columnas Premium) ---
 const pdfStyles = StyleSheet.create({
   page: { flexDirection: 'row', backgroundColor: '#ffffff', fontFamily: 'Helvetica' },
-  leftColumn: { width: '35%', backgroundColor: '#0f172a', padding: 30, color: '#f8fafc' },
-  photoContainer: { alignItems: 'center', marginBottom: 20 },
-  photo: { width: 110, height: 110, borderRadius: 55, objectFit: 'cover', border: '3px solid #334155' },
-  nameLeft: { fontSize: 22, fontWeight: 'bold', textAlign: 'center', marginTop: 10, color: '#ffffff', textTransform: 'uppercase' },
-  roleLeft: { fontSize: 10, textAlign: 'center', color: '#94a3b8', marginTop: 4, letterSpacing: 1 },
-  sectionLeft: { marginTop: 30 },
-  titleLeft: { fontSize: 12, fontWeight: 'bold', color: '#38bdf8', borderBottom: '1px solid #334155', paddingBottom: 5, marginBottom: 10, letterSpacing: 1 },
-  textLeft: { fontSize: 10, color: '#cbd5e1', marginBottom: 8, lineHeight: 1.4 },
-  rightColumn: { width: '65%', padding: 40, paddingTop: 45 },
-  sectionRight: { marginBottom: 25 },
-  titleRight: { fontSize: 14, fontWeight: 'bold', color: '#0f172a', borderBottom: '2px solid #e2e8f0', paddingBottom: 5, marginBottom: 15, textTransform: 'uppercase', letterSpacing: 1 },
-  textBodyRight: { fontSize: 10, color: '#475569', lineHeight: 1.6, textAlign: 'justify' },
-  itemBlock: { marginBottom: 15 },
-  itemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 3 },
-  itemTitle: { fontSize: 12, fontWeight: 'bold', color: '#1e293b', width: '70%' },
+  // COLUMNA IZQUIERDA
+  leftColumn: { width: '32%', backgroundColor: '#f8fafc', padding: 25, borderRight: '1px solid #e2e8f0' },
+  photoContainer: { alignItems: 'center', marginBottom: 25 },
+  photo: { width: 120, height: 120, borderRadius: 60, objectFit: 'cover', marginBottom: 15, border: '4px solid #ffffff' },
+  sectionLeft: { marginBottom: 25 },
+  titleLeft: { fontSize: 11, fontWeight: 'bold', color: '#0f172a', borderBottom: '1px solid #cbd5e1', paddingBottom: 4, marginBottom: 12, letterSpacing: 1.5 },
+  textLeft: { fontSize: 9, color: '#475569', marginBottom: 6, lineHeight: 1.4 },
+  textLeftBold: { fontSize: 9, fontWeight: 'bold', color: '#1e293b', marginBottom: 2 },
+  
+  skillBlock: { marginBottom: 8 },
+  skillHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 },
+  skillName: { fontSize: 9, color: '#334155', fontWeight: 'bold' },
+  barBg: { height: 4, backgroundColor: '#e2e8f0', borderRadius: 2, overflow: 'hidden' },
+  barFill: { height: '100%', backgroundColor: '#3b82f6', borderRadius: 2 },
+
+  // COLUMNA DERECHA
+  rightColumn: { width: '68%', padding: 35, paddingTop: 40 },
+  headerRight: { marginBottom: 25 },
+  nameRight: { fontSize: 26, fontWeight: 'bold', color: '#0f172a', textTransform: 'uppercase', letterSpacing: -0.5 },
+  titleRightMain: { fontSize: 13, fontWeight: 'bold', color: '#2563eb', marginTop: 5, letterSpacing: 2, textTransform: 'uppercase' },
+  colegiatura: { fontSize: 10, color: '#64748b', marginTop: 4, fontWeight: 'bold' },
+  
+  contactRow: { flexDirection: 'row', gap: 15, marginTop: 12, flexWrap: 'wrap' },
+  contactItem: { fontSize: 9, color: '#475569' },
+
+  sectionRight: { marginBottom: 20 },
+  titleRight: { fontSize: 12, fontWeight: 'bold', color: '#0f172a', borderBottom: '2px solid #2563eb', paddingBottom: 4, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 },
+  textBodyRight: { fontSize: 9.5, color: '#334155', lineHeight: 1.6, textAlign: 'justify' },
+  
+  itemBlock: { marginBottom: 14 },
+  itemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 2 },
+  itemTitle: { fontSize: 11, fontWeight: 'bold', color: '#0f172a', width: '70%' },
   itemDate: { fontSize: 9, color: '#2563eb', fontWeight: 'bold', width: '30%', textAlign: 'right' },
-  itemSubtitle: { fontSize: 10, color: '#64748b', marginBottom: 5, fontStyle: 'italic' },
+  itemSubtitle: { fontSize: 10, color: '#64748b', marginBottom: 4, fontStyle: 'italic' },
+  
+  bulletPoint: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4 },
+  bulletDot: { fontSize: 10, color: '#2563eb', marginRight: 5, marginTop: -1 },
+  bulletText: { fontSize: 9.5, color: '#475569', lineHeight: 1.5, flex: 1 },
 })
 
 const CVPdfDocument = ({ data }: { data: any }) => (
   <Document>
     <Page size="A4" style={pdfStyles.page}>
+      
+      {/* COLUMNA IZQUIERDA */}
       <View style={pdfStyles.leftColumn}>
         <View style={pdfStyles.photoContainer}>
-          {data.foto_url ? <PdfImage src={data.foto_url} style={pdfStyles.photo} /> : null}
-          <Text style={pdfStyles.nameLeft}>{data.nombres}</Text>
-          <Text style={pdfStyles.nameLeft}>{data.apellidos}</Text>
-          <Text style={pdfStyles.roleLeft}>DNI: {data.dni}</Text>
+          {data.foto_url && <PdfImage src={data.foto_url} style={pdfStyles.photo} />}
         </View>
-        <View style={pdfStyles.sectionLeft}>
-          <Text style={pdfStyles.titleLeft}>CONTACTO</Text>
-          <Text style={pdfStyles.textLeft}>📞 {data.telefono || 'No registrado'}</Text>
-          <Text style={pdfStyles.textLeft}>✉️ {data.correo || 'No registrado'}</Text>
-          <Text style={pdfStyles.textLeft}>📍 {data.direccion || 'No registrado'}</Text>
-        </View>
-        <View style={pdfStyles.sectionLeft}>
-          <Text style={pdfStyles.titleLeft}>PERFIL PROFESIONAL</Text>
-          <Text style={pdfStyles.textLeft}>{data.perfil_profesional || 'Sin descripción registrada.'}</Text>
-        </View>
+
+        {data.educacion && data.educacion.length > 0 && (
+          <View style={pdfStyles.sectionLeft}>
+            <Text style={pdfStyles.titleLeft}>EDUCACIÓN</Text>
+            {data.educacion.map((edu: any, i: number) => (
+              <View key={i} style={{ marginBottom: 10 }}>
+                <Text style={pdfStyles.textLeftBold}>{edu.institucion}</Text>
+                <Text style={pdfStyles.textLeft}>{edu.titulo}</Text>
+                <Text style={{ fontSize: 8, color: '#94a3b8' }}>{edu.anio_inicio} - {edu.anio_fin}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {data.software && data.software.length > 0 && (
+          <View style={pdfStyles.sectionLeft}>
+            <Text style={pdfStyles.titleLeft}>COMPETENCIAS TÉCNICAS</Text>
+            {data.software.map((sw: any, i: number) => (
+              <View key={i} style={pdfStyles.skillBlock}>
+                <View style={pdfStyles.skillHeader}>
+                  <Text style={pdfStyles.skillName}>{sw.nombre}</Text>
+                  <Text style={{fontSize: 7, color: '#94a3b8'}}>{sw.nivel}</Text>
+                </View>
+                <View style={pdfStyles.barBg}><View style={[pdfStyles.barFill, { width: `${sw.porcentaje}%` }]} /></View>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {data.idiomas && data.idiomas.length > 0 && (
+          <View style={pdfStyles.sectionLeft}>
+            <Text style={pdfStyles.titleLeft}>IDIOMAS</Text>
+            {data.idiomas.map((idioma: any, i: number) => (
+              <View key={i} style={pdfStyles.skillBlock}>
+                <View style={pdfStyles.skillHeader}>
+                  <Text style={pdfStyles.skillName}>{idioma.nombre}</Text>
+                  <Text style={{fontSize: 7, color: '#94a3b8'}}>{idioma.nivel}</Text>
+                </View>
+                <View style={pdfStyles.barBg}><View style={[pdfStyles.barFill, { width: `${idioma.porcentaje}%` }]} /></View>
+              </View>
+            ))}
+          </View>
+        )}
       </View>
+
+      {/* COLUMNA DERECHA */}
       <View style={pdfStyles.rightColumn}>
+        <View style={pdfStyles.headerRight}>
+          <Text style={pdfStyles.nameRight}>{data.nombres} {data.apellidos}</Text>
+          {data.titulo_profesional && <Text style={pdfStyles.titleRightMain}>{data.titulo_profesional}</Text>}
+          {data.colegiatura && <Text style={pdfStyles.colegiatura}>{data.colegiatura}</Text>}
+          
+          <View style={pdfStyles.contactRow}>
+            {data.correo && <Text style={pdfStyles.contactItem}>✉ {data.correo}</Text>}
+            {data.telefono && <Text style={pdfStyles.contactItem}>✆ {data.telefono}</Text>}
+            {data.direccion && <Text style={pdfStyles.contactItem}>📍 {data.direccion}</Text>}
+            {data.linkedin && <Text style={pdfStyles.contactItem}>in/ {data.linkedin}</Text>}
+          </View>
+        </View>
+
+        {data.perfil_profesional && (
+          <View style={pdfStyles.sectionRight}>
+            <Text style={pdfStyles.titleRight}>Perfil Profesional</Text>
+            <Text style={pdfStyles.textBodyRight}>{data.perfil_profesional}</Text>
+          </View>
+        )}
+
+        {data.logros && data.logros.length > 0 && (
+          <View style={pdfStyles.sectionRight}>
+            <Text style={pdfStyles.titleRight}>Logros Clave</Text>
+            {data.logros.map((logro: any, i: number) => (
+              <View key={i} style={pdfStyles.bulletPoint}>
+                <Text style={pdfStyles.bulletDot}>•</Text>
+                <Text style={pdfStyles.bulletText}>{logro.descripcion}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
         <View style={pdfStyles.sectionRight}>
           <Text style={pdfStyles.titleRight}>Experiencia Laboral</Text>
           {data.experiencias && data.experiencias.length > 0 ? data.experiencias.map((exp: any, i: number) => (
             <View key={i} style={pdfStyles.itemBlock}>
-              <View style={pdfStyles.itemHeader}><Text style={pdfStyles.itemTitle}>{exp.cargo}</Text><Text style={pdfStyles.itemDate}>{exp.fecha_inicio} - {exp.fecha_fin || 'Actual'}</Text></View>
-              <Text style={pdfStyles.itemSubtitle}>{exp.empresa}</Text><Text style={pdfStyles.textBodyRight}>{exp.descripcion}</Text>
+              <View style={pdfStyles.itemHeader}>
+                <Text style={pdfStyles.itemTitle}>{exp.cargo}</Text>
+                <Text style={pdfStyles.itemDate}>{exp.fecha_inicio} / {exp.fecha_fin || 'Actual'}</Text>
+              </View>
+              <Text style={pdfStyles.itemSubtitle}>{exp.empresa}</Text>
+              <Text style={pdfStyles.textBodyRight}>{exp.descripcion}</Text>
             </View>
           )) : <Text style={pdfStyles.textBodyRight}>No registra experiencia laboral.</Text>}
-        </View>
-        <View style={pdfStyles.sectionRight}>
-          <Text style={pdfStyles.titleRight}>Educación y Formación</Text>
-          {data.educacion && data.educacion.length > 0 ? data.educacion.map((edu: any, i: number) => (
-            <View key={i} style={pdfStyles.itemBlock}>
-              <View style={pdfStyles.itemHeader}><Text style={pdfStyles.itemTitle}>{edu.titulo}</Text><Text style={pdfStyles.itemDate}>{edu.anio_inicio} - {edu.anio_fin}</Text></View>
-              <Text style={pdfStyles.itemSubtitle}>{edu.institucion} ({edu.nivel})</Text>
-            </View>
-          )) : <Text style={pdfStyles.textBodyRight}>No registra educación previa.</Text>}
         </View>
       </View>
     </Page>
@@ -89,12 +173,34 @@ const AnimatedSaveButton = ({ onClick, isSaving, isSaved }: { onClick: () => voi
       <button className={`btn-uiverse ${buttonStateClass}`} onClick={onClick} disabled={isSaving || isSaved}>
         <div className="outline" />
         <div className="state state--default">
-          <div className="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g style={{filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.2))'}}><path d="M14.2199 21.63C13.0399 21.63 11.3699 20.8 10.0499 16.83L9.32988 14.67L7.16988 13.95C3.20988 12.63 2.37988 10.96 2.37988 9.78001C2.37988 8.61001 3.20988 6.93001 7.16988 5.60001L15.6599 2.77001C17.7799 2.06001 19.5499 2.27001 20.6399 3.35001C21.7299 4.43001 21.9399 6.21001 21.2299 8.33001L18.3999 16.82C17.0699 20.8 15.3999 21.63 14.2199 21.63ZM7.63988 7.03001C4.85988 7.96001 3.86988 9.06001 3.86988 9.78001C3.86988 10.5 4.85988 11.6 7.63988 12.52L10.1599 13.36C10.3799 13.43 10.5599 13.61 10.6299 13.83L11.4699 16.35C12.3899 19.13 13.4999 20.12 14.2199 20.12C14.9399 20.12 16.0399 19.13 16.9699 16.35L19.7999 7.86001C20.3099 6.32001 20.2199 5.06001 19.5699 4.41001C18.9199 3.76001 17.6599 3.68001 16.1299 4.19001L7.63988 7.03001Z" fill="currentColor" /><path d="M10.11 14.4C9.92005 14.4 9.73005 14.33 9.58005 14.18C9.29005 13.89 9.29005 13.41 9.58005 13.12L13.16 9.53C13.45 9.24 13.93 9.24 14.22 9.53C14.51 9.82 14.51 10.3 14.22 10.59L10.64 14.18C10.5 14.33 10.3 14.4 10.11 14.4Z" fill="currentColor" /></g></svg></div>
-          <p>{['G','u','a','r','d','a','r','C','V'].map((letter, i) => (<span key={i} style={{ '--i': i } as React.CSSProperties} className={i === 6 ? 'mr-1.5' : ''}>{letter}</span>))}</p>
+          <div className="icon">
+            <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <g style={{filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.2))'}}>
+                <path d="M14.2199 21.63C13.0399 21.63 11.3699 20.8 10.0499 16.83L9.32988 14.67L7.16988 13.95C3.20988 12.63 2.37988 10.96 2.37988 9.78001C2.37988 8.61001 3.20988 6.93001 7.16988 5.60001L15.6599 2.77001C17.7799 2.06001 19.5499 2.27001 20.6399 3.35001C21.7299 4.43001 21.9399 6.21001 21.2299 8.33001L18.3999 16.82C17.0699 20.8 15.3999 21.63 14.2199 21.63ZM7.63988 7.03001C4.85988 7.96001 3.86988 9.06001 3.86988 9.78001C3.86988 10.5 4.85988 11.6 7.63988 12.52L10.1599 13.36C10.3799 13.43 10.5599 13.61 10.6299 13.83L11.4699 16.35C12.3899 19.13 13.4999 20.12 14.2199 20.12C14.9399 20.12 16.0399 19.13 16.9699 16.35L19.7999 7.86001C20.3099 6.32001 20.2199 5.06001 19.5699 4.41001C18.9199 3.76001 17.6599 3.68001 16.1299 4.19001L7.63988 7.03001Z" fill="currentColor" />
+                <path d="M10.11 14.4C9.92005 14.4 9.73005 14.33 9.58005 14.18C9.29005 13.89 9.29005 13.41 9.58005 13.12L13.16 9.53C13.45 9.24 13.93 9.24 14.22 9.53C14.51 9.82 14.51 10.3 14.22 10.59L10.64 14.18C10.5 14.33 10.3 14.4 10.11 14.4Z" fill="currentColor" />
+              </g>
+            </svg>
+          </div>
+          <p>
+            {['G','u','a','r','d','a','r','C','V'].map((letter, i) => (
+              <span key={i} style={{ '--i': i } as React.CSSProperties} className={i === 6 ? 'mr-1.5' : ''}>{letter}</span>
+            ))}
+          </p>
         </div>
         <div className="state state--sent">
-          <div className="icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" height="1em" width="1em" strokeWidth="0.5px" stroke="black"><g style={{filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.2))'}}><path fill="currentColor" d="M12 22.75C6.07 22.75 1.25 17.93 1.25 12C1.25 6.07 6.07 1.25 12 1.25C17.93 1.25 22.75 6.07 22.75 12C22.75 17.93 17.93 22.75 12 22.75ZM12 2.75C6.9 2.75 2.75 6.9 2.75 12C2.75 17.1 6.9 21.25 12 21.25C17.1 21.25 21.25 17.1 21.25 12C21.25 6.9 17.1 2.75 12 2.75Z" /><path fill="currentColor" d="M10.5795 15.5801C10.3795 15.5801 10.1895 15.5001 10.0495 15.3601L7.21945 12.5301C6.92945 12.2401 6.92945 11.7601 7.21945 11.4701C7.50945 11.1801 7.98945 11.1801 8.27945 11.4701L10.5795 13.7701L15.7195 8.6301C16.0095 8.3401 16.4895 8.3401 16.7795 8.6301C17.0695 8.9201 17.0695 9.4001 16.7795 9.6901L11.1095 15.3601C10.9695 15.5001 10.7795 15.5801 10.5795 15.5801Z" /></g></svg></div>
-          <p>{['¡','G','u','a','r','d','a','d','o','!'].map((letter, i) => (<span key={i} style={{ '--i': i + 5 } as React.CSSProperties}>{letter}</span>))}</p>
+          <div className="icon">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" height="1em" width="1em" strokeWidth="0.5px" stroke="black">
+              <g style={{filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.2))'}}>
+                <path fill="currentColor" d="M12 22.75C6.07 22.75 1.25 17.93 1.25 12C1.25 6.07 6.07 1.25 12 1.25C17.93 1.25 22.75 6.07 22.75 12C22.75 17.93 17.93 22.75 12 22.75ZM12 2.75C6.9 2.75 2.75 6.9 2.75 12C2.75 17.1 6.9 21.25 12 21.25C17.1 21.25 21.25 17.1 21.25 12C21.25 6.9 17.1 2.75 12 2.75Z" />
+                <path fill="currentColor" d="M10.5795 15.5801C10.3795 15.5801 10.1895 15.5001 10.0495 15.3601L7.21945 12.5301C6.92945 12.2401 6.92945 11.7601 7.21945 11.4701C7.50945 11.1801 7.98945 11.1801 8.27945 11.4701L10.5795 13.7701L15.7195 8.6301C16.0095 8.3401 16.4895 8.3401 16.7795 8.6301C17.0695 8.9201 17.0695 9.4001 16.7795 9.6901L11.1095 15.3601C10.9695 15.5001 10.7795 15.5801 10.5795 15.5801Z" />
+              </g>
+            </svg>
+          </div>
+          <p>
+            {['¡','G','u','a','r','d','a','d','o','!'].map((letter, i) => (
+              <span key={i} style={{ '--i': i + 5 } as React.CSSProperties}>{letter}</span>
+            ))}
+          </p>
         </div>
       </button>
     </div>
@@ -104,6 +210,8 @@ const AnimatedSaveButton = ({ onClick, isSaving, isSaved }: { onClick: () => voi
 type Experiencia = { id: string, empresa: string, cargo: string, fecha_inicio: string, fecha_fin: string, descripcion: string }
 type Educacion = { id: string, institucion: string, titulo: string, nivel: string, anio_inicio: string, anio_fin: string }
 type Certificado = { id: string, nombre: string, institucion: string, url_archivo: string }
+type Skill = { id: string, nombre: string, nivel: string, porcentaje: number }
+type Logro = { id: string, descripcion: string }
 
 export default function ConstructorCV() {
   const params = useParams()
@@ -116,31 +224,51 @@ export default function ConstructorCV() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false) 
   const [uploadingFile, setUploadingFile] = useState(false)
-  const [activeTab, setActiveTab] = useState<'perfil' | 'experiencia' | 'educacion' | 'certificados'>('perfil')
+  const [activeTab, setActiveTab] = useState<'perfil' | 'experiencia' | 'educacion' | 'competencias' | 'logros' | 'certificados'>('perfil')
 
-  const [perfil, setPerfil] = useState({ id: '', nombres: '', apellidos: '', correo: '', telefono: '', direccion: '', perfil_profesional: '', foto_url: '' })
+  const [perfil, setPerfil] = useState({ id: '', nombres: '', apellidos: '', correo: '', telefono: '', direccion: '', perfil_profesional: '', foto_url: '', titulo_profesional: '', linkedin: '', colegiatura: '' })
   const [experiencias, setExperiencias] = useState<Experiencia[]>([])
   const [educacion, setEducacion] = useState<Educacion[]>([])
   const [certificados, setCertificados] = useState<Certificado[]>([])
   
-  // NUEVO: ESTADOS PARA FUNCIONES EXTRAS
+  // NUEVOS ESTADOS COMPLEJOS
+  const [software, setSoftware] = useState<Skill[]>([])
+  const [idiomas, setIdiomas] = useState<Skill[]>([])
+  const [logros, setLogros] = useState<Logro[]>([])
+  
+  // Inputs temporales
+  const [newSoftName, setNewSoftName] = useState('')
+  const [newSoftLevel, setNewSoftLevel] = useState('Intermedio')
+  const [newLangName, setNewLangName] = useState('')
+  const [newLangLevel, setNewLangLevel] = useState('Básico')
+  const [newLogro, setNewLogro] = useState('')
+
   const [aceptaTerminos, setAceptaTerminos] = useState(false)
   const [progresoCV, setProgresoCV] = useState(0)
 
+  // ESTADO DEL BOTÓN DE DESCARGA
+  const [downloadStatus, setDownloadStatus] = useState<'idle' | 'generating' | 'success'>('idle')
+
   useEffect(() => { cargarDatos() }, [])
 
-  // NUEVO: CALCULAR PROGRESO CADA VEZ QUE CAMBIA ALGO
   useEffect(() => {
     let puntos = 0
-    if (perfil.telefono) puntos += 15
-    if (perfil.correo) puntos += 15
-    if (perfil.direccion) puntos += 10
-    if (perfil.perfil_profesional) puntos += 20
-    if (perfil.foto_url) puntos += 20
+    if (perfil.telefono) puntos += 10
+    if (perfil.correo) puntos += 10
+    if (perfil.titulo_profesional) puntos += 10
+    if (perfil.perfil_profesional) puntos += 15
+    if (perfil.foto_url) puntos += 15
     if (experiencias.length > 0) puntos += 10
     if (educacion.length > 0) puntos += 10
-    setProgresoCV(puntos)
-  }, [perfil, experiencias, educacion])
+    if (software.length > 0) puntos += 10
+    if (logros.length > 0) puntos += 10
+
+    setProgresoCV(puntos > 100 ? 100 : puntos)
+
+    if (puntos >= 100 && progresoCV < 100) {
+      confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#2563eb', '#10b981', '#f59e0b'] })
+    }
+  }, [perfil, experiencias, educacion, software, logros])
 
   const cargarDatos = async () => {
     try {
@@ -150,11 +278,15 @@ export default function ConstructorCV() {
         setPerfil({
           id: data.id, nombres: data.nombres, apellidos: data.apellidos, correo: data.correo || '', 
           telefono: data.telefono || '', direccion: data.direccion || '', 
-          perfil_profesional: data.perfil_profesional || '', foto_url: data.foto_url || ''
+          perfil_profesional: data.perfil_profesional || '', foto_url: data.foto_url || '',
+          titulo_profesional: data.titulo_profesional || '', linkedin: data.linkedin || '', colegiatura: data.colegiatura || ''
         })
         setExperiencias(data.experiencias || [])
         setEducacion(data.educacion || [])
         setCertificados(data.certificados || [])
+        setSoftware(data.software || [])
+        setIdiomas(data.idiomas || [])
+        setLogros(data.logros || [])
       }
     } catch (error) {
       toast.error('Error al cargar tu información.')
@@ -195,12 +327,15 @@ export default function ConstructorCV() {
     try {
       const { error } = await supabase.from('cv_postulantes').update({
         correo: perfil.correo, telefono: perfil.telefono, direccion: perfil.direccion, perfil_profesional: perfil.perfil_profesional,
-        foto_url: perfil.foto_url, experiencias: experiencias, educacion: educacion, certificados: certificados, updated_at: new Date().toISOString()
+        foto_url: perfil.foto_url, titulo_profesional: perfil.titulo_profesional, linkedin: perfil.linkedin, colegiatura: perfil.colegiatura,
+        experiencias: experiencias, educacion: educacion, certificados: certificados, 
+        software: software, idiomas: idiomas, logros: logros, updated_at: new Date().toISOString()
       }).eq('dni', dni)
 
       if (error) throw error
       setSaved(true)
-      setTimeout(() => { setSaving(false); setSaved(false) }, 3000)
+      toast.success('¡Datos guardados correctamente!')
+      setTimeout(() => { setSaving(false); setSaved(false) }, 2000)
     } catch (error) {
       setSaving(false)
       toast.error('Hubo un error al guardar.')
@@ -209,30 +344,63 @@ export default function ConstructorCV() {
 
   const descargarMiCV = async () => {
     if (!aceptaTerminos) {
-      toast.error('Debes aceptar la política de privacidad para descargar tu CV.')
+      toast.error('Debes aceptar la política de privacidad.')
       return
     }
-    const toastId = toast.loading('Generando tu CV Oficial...')
+    
+    setDownloadStatus('generating')
+    
     try {
-      const fullData = { ...perfil, dni, experiencias, educacion, certificados }
+      const fullData = { ...perfil, dni, experiencias, educacion, certificados, software, idiomas, logros }
       const blob = await pdf(<CVPdfDocument data={fullData} />).toBlob()
       const url = URL.createObjectURL(blob)
+      
+      await new Promise(resolve => setTimeout(resolve, 2000))
+
       const link = document.createElement('a')
       link.href = url
-      link.download = `CV_RUAG_${perfil.apellidos}_${dni}.pdf`
+      link.download = `CV_${perfil.nombres}_${perfil.apellidos}.pdf`
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
-      toast.success('¡CV descargado con éxito!', { id: toastId })
+      
+      setDownloadStatus('success')
+      confetti({ particleCount: 120, spread: 80, origin: { y: 0.7 }, zIndex: 9999 })
+      
+      setTimeout(() => setDownloadStatus('idle'), 3500)
+
     } catch (error) {
-      toast.error('Error al generar el PDF', { id: toastId })
+      setDownloadStatus('idle')
+      toast.error('Error al generar el PDF')
     }
   }
 
-  // DATA DE UBIGEOS (Simulada para el ejemplo, enfocada en Callao/Lima)
+  const agregarSoftware = () => {
+    if (newSoftName.trim()) {
+      const pct = newSoftLevel === 'Básico' ? 30 : newSoftLevel === 'Intermedio' ? 60 : newSoftLevel === 'Avanzado' ? 85 : 100;
+      setSoftware([...software, { id: crypto.randomUUID(), nombre: newSoftName.trim(), nivel: newSoftLevel, porcentaje: pct }])
+      setNewSoftName('')
+    }
+  }
+
+  const agregarIdioma = () => {
+    if (newLangName.trim()) {
+      const pct = newLangLevel === 'Básico' ? 30 : newLangLevel === 'Intermedio' ? 60 : newLangLevel === 'Avanzado' ? 85 : 100;
+      setIdiomas([...idiomas, { id: crypto.randomUUID(), nombre: newLangName.trim(), nivel: newLangLevel, porcentaje: pct }])
+      setNewLangName('')
+    }
+  }
+
+  const agregarLogro = () => {
+    if (newLogro.trim()) {
+      setLogros([...logros, { id: crypto.randomUUID(), descripcion: newLogro.trim() }])
+      setNewLogro('')
+    }
+  }
+
   const distritos = [
     "Callao Cercado", "Bellavista", "Carmen de la Legua", "La Perla", "La Punta", "Ventanilla", "Mi Perú",
-    "Lima Cercado", "San Miguel", "Magdalena del Mar", "Pueblo Libre", "Los Olivos", "San Martín de Porres", "Comas"
+    "Lima Cercado", "San Miguel", "Magdalena del Mar", "Pueblo Libre", "Los Olivos", "San Martín de Porres", "San Isidro", "Miraflores", "Surco"
   ]
 
   if (loading) return <div className="h-screen flex items-center justify-center bg-gray-50"><Loader2 className="animate-spin text-blue-600" size={40} /></div>
@@ -256,7 +424,7 @@ export default function ConstructorCV() {
         </nav>
         <div className="p-4 border-t border-gray-100">
           <button onClick={() => router.push('/')} className="flex items-center justify-center lg:justify-start gap-3 w-full p-3 rounded-xl text-slate-400 hover:bg-red-50 hover:text-red-600 transition-all font-semibold text-sm">
-            <ChevronLeft size={18} /><span className="hidden lg:block">Salir de mi cuenta</span>
+            <ChevronLeft size={18} /><span className="hidden lg:block">Salir</span>
           </button>
         </div>
       </aside>
@@ -268,12 +436,16 @@ export default function ConstructorCV() {
               <div className="px-6 lg:px-10 h-20 flex items-center justify-between">
                 <div className="flex flex-col gap-1 w-1/2 md:w-1/3">
                   <h2 className="text-xl font-extrabold text-slate-900 tracking-tighter">Constructor de CV</h2>
-                  {/* NUEVO: BARRA DE PROGRESO */}
                   <div className="flex items-center gap-3">
-                    <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                      <motion.div initial={{ width: 0 }} animate={{ width: `${progresoCV}%` }} transition={{ duration: 0.8 }} className={`h-full rounded-full ${progresoCV === 100 ? 'bg-emerald-500' : 'bg-blue-500'}`}/>
+                    <div className={`h-2 w-full bg-gray-100 rounded-full overflow-hidden shadow-inner ${progresoCV === 100 ? 'ring-2 ring-emerald-400/50' : ''}`}>
+                      <motion.div 
+                        initial={{ width: 0 }} animate={{ width: `${progresoCV}%` }} transition={{ type: "spring", bounce: 0.25 }} 
+                        className={`h-full rounded-full ${progresoCV === 100 ? 'bg-gradient-to-r from-emerald-400 to-emerald-600 shadow-[0_0_10px_rgba(16,185,129,0.8)]' : 'bg-gradient-to-r from-blue-400 to-blue-600'}`}
+                      />
                     </div>
-                    <span className="text-[10px] font-bold text-slate-400">{progresoCV}%</span>
+                    <motion.span key={progresoCV} initial={{ scale: 1.5, color: '#2563eb' }} animate={{ scale: 1, color: progresoCV === 100 ? '#10b981' : '#94a3b8' }} className="text-xs font-black">
+                      {progresoCV}%
+                    </motion.span>
                   </div>
                 </div>
                 
@@ -285,7 +457,7 @@ export default function ConstructorCV() {
 
               <div className="px-6 lg:px-10 flex overflow-x-auto scrollbar-hide border-t border-gray-50">
                 <nav className="flex space-x-6 min-w-max py-1">
-                  {[{ id: 'perfil', label: 'Personal', icon: User }, { id: 'experiencia', label: 'Experiencia', icon: Briefcase }, { id: 'educacion', label: 'Educación', icon: GraduationCap }, { id: 'certificados', label: 'Documentos', icon: FileBadge }].map((tab) => (
+                  {[{ id: 'perfil', label: 'Personal', icon: User }, { id: 'experiencia', label: 'Experiencia', icon: Briefcase }, { id: 'educacion', label: 'Educación', icon: GraduationCap }, { id: 'competencias', label: 'Competencias', icon: Zap }, { id: 'logros', label: 'Logros', icon: Award }, { id: 'certificados', label: 'Documentos', icon: FileBadge }].map((tab) => (
                     <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`py-3 flex items-center gap-2 text-sm font-bold border-b-2 transition-all ${activeTab === tab.id ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-400 hover:text-slate-700'}`}>
                       <tab.icon size={16} /> {tab.label}
                     </button>
@@ -297,6 +469,7 @@ export default function ConstructorCV() {
             <div className="flex-1 overflow-y-auto p-6 lg:p-10 scrollbar-thin scrollbar-thumb-gray-200">
               <div className="max-w-4xl mx-auto pb-20">
                 <AnimatePresence mode="wait">
+                  
                   {activeTab === 'perfil' && (
                     <motion.div key="perfil" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
                       <div className="bg-white p-6 sm:p-8 rounded-[2rem] border border-gray-100 shadow-sm flex flex-col sm:flex-row items-center gap-6">
@@ -309,9 +482,9 @@ export default function ConstructorCV() {
                             <input type="file" accept="image/*" className="hidden" onChange={(e) => handleUploadFile(e, 'foto')} />
                           </label>
                         </div>
-                        <div className="text-center sm:text-left">
+                        <div className="text-center sm:text-left flex-1">
                           <h3 className="text-xl font-bold text-slate-900">Fotografía Profesional</h3>
-                          <p className="text-sm text-slate-500 mt-1 max-w-sm">Sube una foto clara y formal. Esto aparecerá en tu Currículum Oficial en formato PDF.</p>
+                          <p className="text-sm text-slate-500 mt-1">Sube una foto formal para tu CV.</p>
                         </div>
                       </div>
 
@@ -319,27 +492,28 @@ export default function ConstructorCV() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                           <div><label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Nombres</label><input type="text" value={perfil.nombres} readOnly className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl text-slate-500 font-semibold cursor-not-allowed" /></div>
                           <div><label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Apellidos</label><input type="text" value={perfil.apellidos} readOnly className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl text-slate-500 font-semibold cursor-not-allowed" /></div>
+                          
+                          <div className="sm:col-span-2"><label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Título Profesional / Oficio</label><input type="text" value={perfil.titulo_profesional} onChange={e => setPerfil({...perfil, titulo_profesional: e.target.value})} className="w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl text-slate-900 font-bold focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all shadow-inner" placeholder="Ej. ARQUITECTO SENIOR, INGENIERO CIVIL..."/></div>
+                          
+                          <div><label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Colegiatura (Opcional)</label><input type="text" value={perfil.colegiatura} onChange={e => setPerfil({...perfil, colegiatura: e.target.value})} className="w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl text-slate-900 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all shadow-inner" placeholder="Ej. CAP 23538, CIP 12345"/></div>
+                          <div><label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Perfil de LinkedIn (Usuario)</label><input type="text" value={perfil.linkedin} onChange={e => setPerfil({...perfil, linkedin: e.target.value})} className="w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl text-slate-900 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all shadow-inner" placeholder="Ej. alberto-mautino"/></div>
+                          
                           <div><label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Celular</label><input type="tel" value={perfil.telefono} onChange={e => setPerfil({...perfil, telefono: e.target.value})} className="w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl text-slate-900 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all shadow-inner" placeholder="Ej. 987654321"/></div>
                           <div><label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Correo Electrónico</label><input type="email" value={perfil.correo} onChange={e => setPerfil({...perfil, correo: e.target.value})} className="w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl text-slate-900 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all shadow-inner" placeholder="ejemplo@correo.com"/></div>
                         </div>
                         
-                        {/* NUEVO: SELECTOR DE UBIGEO/DISTRITO (Más fácil para el usuario) */}
                         <div>
                           <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Distrito de Residencia</label>
                           <div className="relative">
                             <MapPin size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                            <select 
-                              value={perfil.direccion} 
-                              onChange={e => setPerfil({...perfil, direccion: e.target.value})} 
-                              className="w-full pl-12 pr-5 py-4 bg-white border border-gray-200 rounded-2xl text-slate-900 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all shadow-inner appearance-none cursor-pointer"
-                            >
+                            <select value={perfil.direccion} onChange={e => setPerfil({...perfil, direccion: e.target.value})} className="w-full pl-12 pr-5 py-4 bg-white border border-gray-200 rounded-2xl text-slate-900 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all shadow-inner appearance-none cursor-pointer">
                               <option value="">Selecciona tu distrito...</option>
                               {distritos.map(d => <option key={d} value={d}>{d}</option>)}
                             </select>
                           </div>
                         </div>
 
-                        <div><label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Resumen Profesional</label><textarea rows={4} value={perfil.perfil_profesional} onChange={e => setPerfil({...perfil, perfil_profesional: e.target.value})} className="w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl text-slate-900 font-medium focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all resize-none shadow-inner" placeholder="Describe brevemente quién eres, tu experiencia y tus habilidades principales..."/></div>
+                        <div><label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Resumen Profesional</label><textarea rows={5} value={perfil.perfil_profesional} onChange={e => setPerfil({...perfil, perfil_profesional: e.target.value})} className="w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl text-slate-900 font-medium focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all resize-none shadow-inner" placeholder="Ej. Arquitecto colegiado con más de 10 años de experiencia..."/></div>
                       </div>
                     </motion.div>
                   )}
@@ -351,12 +525,12 @@ export default function ConstructorCV() {
                           <button onClick={() => setExperiencias(experiencias.filter(e => e.id !== exp.id))} className="absolute top-6 right-6 p-2.5 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-xl transition-colors"><Trash2 size={18} /></button>
                           <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2"><Briefcase size={16}/> Experiencia {index + 1}</h3>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
+                            <div><label className="block text-xs font-bold text-slate-400 mb-2 ml-1">Cargo Desempeñado</label><input type="text" value={exp.cargo} onChange={e => setExperiencias(experiencias.map(x => x.id === exp.id ? {...x, cargo: e.target.value} : x))} className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl font-bold outline-none focus:border-blue-500 focus:bg-white transition-all"/></div>
                             <div><label className="block text-xs font-bold text-slate-400 mb-2 ml-1">Empresa / Obra</label><input type="text" value={exp.empresa} onChange={e => setExperiencias(experiencias.map(x => x.id === exp.id ? {...x, empresa: e.target.value} : x))} className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl font-semibold outline-none focus:border-blue-500 focus:bg-white transition-all"/></div>
-                            <div><label className="block text-xs font-bold text-slate-400 mb-2 ml-1">Cargo Desempeñado</label><input type="text" value={exp.cargo} onChange={e => setExperiencias(experiencias.map(x => x.id === exp.id ? {...x, cargo: e.target.value} : x))} className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl font-semibold outline-none focus:border-blue-500 focus:bg-white transition-all"/></div>
-                            <div><label className="block text-xs font-bold text-slate-400 mb-2 ml-1">Mes/Año Inicio</label><input type="month" value={exp.fecha_inicio} onChange={e => setExperiencias(experiencias.map(x => x.id === exp.id ? {...x, fecha_inicio: e.target.value} : x))} className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl font-semibold outline-none focus:border-blue-500 focus:bg-white transition-all"/></div>
-                            <div><label className="block text-xs font-bold text-slate-400 mb-2 ml-1">Mes/Año Fin (o Actual)</label><input type="month" value={exp.fecha_fin} onChange={e => setExperiencias(experiencias.map(x => x.id === exp.id ? {...x, fecha_fin: e.target.value} : x))} className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl font-semibold outline-none focus:border-blue-500 focus:bg-white transition-all"/></div>
+                            <div><label className="block text-xs font-bold text-slate-400 mb-2 ml-1">Mes/Año Inicio</label><input type="text" placeholder="Ej. Agost 2022" value={exp.fecha_inicio} onChange={e => setExperiencias(experiencias.map(x => x.id === exp.id ? {...x, fecha_inicio: e.target.value} : x))} className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl font-semibold outline-none focus:border-blue-500 focus:bg-white transition-all"/></div>
+                            <div><label className="block text-xs font-bold text-slate-400 mb-2 ml-1">Mes/Año Fin (o Actual)</label><input type="text" placeholder="Ej. May 2024 o Actualidad" value={exp.fecha_fin} onChange={e => setExperiencias(experiencias.map(x => x.id === exp.id ? {...x, fecha_fin: e.target.value} : x))} className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl font-semibold outline-none focus:border-blue-500 focus:bg-white transition-all"/></div>
                           </div>
-                          <div><label className="block text-xs font-bold text-slate-400 mb-2 ml-1">Descripción de Funciones</label><textarea rows={3} value={exp.descripcion} onChange={e => setExperiencias(experiencias.map(x => x.id === exp.id ? {...x, descripcion: e.target.value} : x))} className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl font-medium outline-none focus:border-blue-500 focus:bg-white transition-all resize-none" placeholder="¿Qué tareas realizabas?"/></div>
+                          <div><label className="block text-xs font-bold text-slate-400 mb-2 ml-1">Descripción de Funciones</label><textarea rows={3} value={exp.descripcion} onChange={e => setExperiencias(experiencias.map(x => x.id === exp.id ? {...x, descripcion: e.target.value} : x))} className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl font-medium outline-none focus:border-blue-500 focus:bg-white transition-all resize-none" placeholder="• Responsable de ejecución de obra..."/></div>
                         </div>
                       ))}
                       <button onClick={() => setExperiencias([...experiencias, { id: crypto.randomUUID(), empresa: '', cargo: '', fecha_inicio: '', fecha_fin: '', descripcion: '' }])} className="w-full py-5 border-2 border-dashed border-gray-300 rounded-[2rem] text-slate-500 font-bold flex items-center justify-center gap-2 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-all">
@@ -372,16 +546,115 @@ export default function ConstructorCV() {
                           <button onClick={() => setEducacion(educacion.filter(e => e.id !== edu.id))} className="absolute top-6 right-6 p-2.5 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-xl transition-colors"><Trash2 size={18} /></button>
                           <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2"><GraduationCap size={16}/> Estudio {index + 1}</h3>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                            <div><label className="block text-xs font-bold text-slate-400 mb-2 ml-1">Centro de Estudios</label><input type="text" value={edu.institucion} onChange={e => setEducacion(educacion.map(x => x.id === edu.id ? {...x, institucion: e.target.value} : x))} className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl font-semibold outline-none focus:border-blue-500 focus:bg-white transition-all" placeholder="Ej. SENATI, SENCICO..."/></div>
-                            <div><label className="block text-xs font-bold text-slate-400 mb-2 ml-1">Título / Oficio</label><input type="text" value={edu.titulo} onChange={e => setEducacion(educacion.map(x => x.id === edu.id ? {...x, titulo: e.target.value} : x))} className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl font-semibold outline-none focus:border-blue-500 focus:bg-white transition-all"/></div>
+                            <div><label className="block text-xs font-bold text-slate-400 mb-2 ml-1">Centro de Estudios</label><input type="text" value={edu.institucion} onChange={e => setEducacion(educacion.map(x => x.id === edu.id ? {...x, institucion: e.target.value} : x))} className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl font-semibold outline-none focus:border-blue-500 focus:bg-white transition-all" placeholder="Ej. U. Ricardo Palma"/></div>
+                            <div><label className="block text-xs font-bold text-slate-400 mb-2 ml-1">Título / Oficio</label><input type="text" value={edu.titulo} onChange={e => setEducacion(educacion.map(x => x.id === edu.id ? {...x, titulo: e.target.value} : x))} className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl font-semibold outline-none focus:border-blue-500 focus:bg-white transition-all" placeholder="Ej. Arquitectura"/></div>
                             <div><label className="block text-xs font-bold text-slate-400 mb-2 ml-1">Nivel</label><select value={edu.nivel} onChange={e => setEducacion(educacion.map(x => x.id === edu.id ? {...x, nivel: e.target.value} : x))} className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl font-semibold outline-none focus:border-blue-500 focus:bg-white transition-all"><option value="">Seleccionar Nivel</option><option value="Secundaria">Secundaria Completa</option><option value="Tecnico">Técnico Superior</option><option value="Universitario">Universitario</option><option value="Curso Libre">Capacitación</option></select></div>
-                            <div className="flex gap-4"><div className="w-1/2"><label className="block text-xs font-bold text-slate-400 mb-2 ml-1">Año Inicio</label><input type="number" value={edu.anio_inicio} onChange={e => setEducacion(educacion.map(x => x.id === edu.id ? {...x, anio_inicio: e.target.value} : x))} className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl font-semibold outline-none focus:border-blue-500 focus:bg-white transition-all"/></div><div className="w-1/2"><label className="block text-xs font-bold text-slate-400 mb-2 ml-1">Año Fin</label><input type="number" value={edu.anio_fin} onChange={e => setEducacion(educacion.map(x => x.id === edu.id ? {...x, anio_fin: e.target.value} : x))} className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl font-semibold outline-none focus:border-blue-500 focus:bg-white transition-all"/></div></div>
+                            <div className="flex gap-4"><div className="w-1/2"><label className="block text-xs font-bold text-slate-400 mb-2 ml-1">Año Inicio</label><input type="text" value={edu.anio_inicio} onChange={e => setEducacion(educacion.map(x => x.id === edu.id ? {...x, anio_inicio: e.target.value} : x))} className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl font-semibold outline-none focus:border-blue-500 focus:bg-white transition-all" placeholder="2005"/></div><div className="w-1/2"><label className="block text-xs font-bold text-slate-400 mb-2 ml-1">Año Fin</label><input type="text" value={edu.anio_fin} onChange={e => setEducacion(educacion.map(x => x.id === edu.id ? {...x, anio_fin: e.target.value} : x))} className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl font-semibold outline-none focus:border-blue-500 focus:bg-white transition-all" placeholder="2010"/></div></div>
                           </div>
                         </div>
                       ))}
                       <button onClick={() => setEducacion([...educacion, { id: crypto.randomUUID(), institucion: '', titulo: '', nivel: '', anio_inicio: '', anio_fin: '' }])} className="w-full py-5 border-2 border-dashed border-gray-300 rounded-[2rem] text-slate-500 font-bold flex items-center justify-center gap-2 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-all">
                         <Plus size={20} /> Añadir Estudio o Formación
                       </button>
+                    </motion.div>
+                  )}
+
+                  {activeTab === 'competencias' && (
+                    <motion.div key="competencias" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
+                      
+                      {/* SECCIÓN COMPETENCIAS TÉCNICAS */}
+                      <div className="bg-white p-6 sm:p-8 rounded-[2rem] border border-gray-100 shadow-sm">
+                        <h3 className="text-lg font-black text-slate-900 mb-4 flex items-center gap-2"><Zap size={20} className="text-blue-500"/> Competencias Técnicas / Herramientas</h3>
+                        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+                          <input type="text" value={newSoftName} onChange={e => setNewSoftName(e.target.value)} placeholder="Ej. AutoCAD, Gestión SSOMA, Soldadura..." className="flex-1 px-5 py-3 bg-gray-50 border border-gray-200 rounded-xl font-semibold outline-none focus:border-blue-500 transition-all"/>
+                          <select value={newSoftLevel} onChange={e => setNewSoftLevel(e.target.value)} className="w-full sm:w-40 px-5 py-3 bg-gray-50 border border-gray-200 rounded-xl font-semibold outline-none focus:border-blue-500 transition-all cursor-pointer">
+                            <option value="Básico">Básico</option>
+                            <option value="Intermedio">Intermedio</option>
+                            <option value="Avanzado">Avanzado</option>
+                            <option value="Experto">Experto</option>
+                          </select>
+                          <button onClick={agregarSoftware} className="bg-slate-900 text-white px-6 py-3 rounded-xl font-bold hover:bg-black transition-colors shrink-0">Agregar</button>
+                        </div>
+                        
+                        <div className="space-y-3">
+                          {software.map(sw => (
+                            <div key={sw.id} className="flex items-center justify-between bg-slate-50 p-3 px-5 rounded-xl border border-slate-100">
+                              <div className="w-1/3 font-bold text-slate-700">{sw.nombre}</div>
+                              <div className="w-1/3 flex items-center gap-2">
+                                <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden"><div className="h-full bg-blue-500 rounded-full" style={{ width: `${sw.porcentaje}%` }}></div></div>
+                                <span className="text-[10px] font-bold text-slate-400 w-16 text-right uppercase">{sw.nivel}</span>
+                              </div>
+                              <button onClick={() => setSoftware(software.filter(s => s.id !== sw.id))} className="text-red-400 hover:text-red-600 p-1"><X size={16}/></button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* SECCIÓN IDIOMAS */}
+                      <div className="bg-white p-6 sm:p-8 rounded-[2rem] border border-gray-100 shadow-sm">
+                        <h3 className="text-lg font-black text-slate-900 mb-4 flex items-center gap-2"><Globe size={20} className="text-emerald-500"/> Idiomas</h3>
+                        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+                          <input type="text" value={newLangName} onChange={e => setNewLangName(e.target.value)} placeholder="Ej. Inglés, Español..." className="flex-1 px-5 py-3 bg-gray-50 border border-gray-200 rounded-xl font-semibold outline-none focus:border-emerald-500 transition-all"/>
+                          <select value={newLangLevel} onChange={e => setNewLangLevel(e.target.value)} className="w-full sm:w-40 px-5 py-3 bg-gray-50 border border-gray-200 rounded-xl font-semibold outline-none focus:border-emerald-500 transition-all cursor-pointer">
+                            <option value="Básico">Básico</option>
+                            <option value="Intermedio">Intermedio</option>
+                            <option value="Avanzado">Avanzado</option>
+                            <option value="Nativo">Nativo</option>
+                          </select>
+                          <button onClick={agregarIdioma} className="bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-emerald-700 transition-colors shrink-0">Agregar</button>
+                        </div>
+                        
+                        <div className="space-y-3">
+                          {idiomas.map(lang => (
+                            <div key={lang.id} className="flex items-center justify-between bg-emerald-50/50 p-3 px-5 rounded-xl border border-emerald-100">
+                              <div className="w-1/3 font-bold text-emerald-900">{lang.nombre}</div>
+                              <div className="w-1/3 flex items-center gap-2">
+                                <div className="h-2 w-full bg-emerald-200 rounded-full overflow-hidden"><div className="h-full bg-emerald-500 rounded-full" style={{ width: `${lang.porcentaje}%` }}></div></div>
+                                <span className="text-[10px] font-bold text-emerald-600 w-16 text-right uppercase">{lang.nivel}</span>
+                              </div>
+                              <button onClick={() => setIdiomas(idiomas.filter(l => l.id !== lang.id))} className="text-red-400 hover:text-red-600 p-1"><X size={16}/></button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                    </motion.div>
+                  )}
+
+                  {activeTab === 'logros' && (
+                    <motion.div key="logros" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
+                      <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-8 rounded-[2rem] text-white shadow-lg relative overflow-hidden">
+                        <div className="absolute -right-10 -top-10 opacity-20"><Star size={150} /></div>
+                        <h3 className="text-2xl font-black mb-2 relative z-10">Logros Clave</h3>
+                        <p className="text-amber-100 text-sm mb-6 max-w-md relative z-10">Destaca tus principales hitos, coordinaciones o habilidades blandas. (Ej. "Coordinación interdisciplinaria con equipos de ingeniería").</p>
+                        
+                        <div className="flex gap-3 relative z-10">
+                          <input 
+                            type="text" value={newLogro} onChange={(e) => setNewLogro(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); agregarLogro() } }}
+                            placeholder="Describe un logro..." 
+                            className="flex-1 px-5 py-4 bg-white/10 border border-white/20 rounded-2xl text-white placeholder:text-white/50 focus:outline-none focus:bg-white/20 transition-all font-semibold"
+                          />
+                          <button onClick={agregarLogro} className="bg-white text-orange-600 px-6 py-4 rounded-2xl font-black hover:bg-orange-50 transition-colors shadow-md shrink-0">Agregar</button>
+                        </div>
+                      </div>
+
+                      <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm min-h-[200px] space-y-4">
+                        {logros.length === 0 ? (
+                          <div className="h-full flex flex-col items-center justify-center text-slate-400 py-10">
+                            <Star size={48} className="mb-4 opacity-20" />
+                            <p className="font-bold">No has agregado logros clave.</p>
+                          </div>
+                        ) : (
+                          logros.map((logro) => (
+                            <motion.div key={logro.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="flex items-start gap-4 p-4 bg-amber-50/50 border border-amber-100 rounded-xl">
+                              <div className="mt-1 w-2 h-2 rounded-full bg-amber-500 shrink-0"></div>
+                              <p className="flex-1 text-sm font-semibold text-slate-700 leading-relaxed">{logro.descripcion}</p>
+                              <button onClick={() => setLogros(logros.filter(l => l.id !== logro.id))} className="text-slate-400 hover:text-red-500 transition-colors"><X size={18}/></button>
+                            </motion.div>
+                          ))
+                        )}
+                      </div>
                     </motion.div>
                   )}
 
@@ -429,53 +702,94 @@ export default function ConstructorCV() {
           </>
         )}
 
-        {/* VISTA 2: DESCARGAR CV OFICIAL */}
         {sidebarView === 'descargar' && (
-          <div className="flex-1 overflow-y-auto bg-slate-50 p-6 lg:p-10 flex flex-col items-center">
+          <div className="flex-1 overflow-y-auto bg-[#0a0a0a] p-6 lg:p-10 flex flex-col items-center relative">
+            
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-[500px] bg-blue-600/20 blur-[120px] rounded-full pointer-events-none"></div>
+
             <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-              className="w-full max-w-2xl bg-white rounded-[3rem] p-8 sm:p-12 shadow-xl shadow-slate-200 border border-slate-100 flex flex-col items-center text-center mt-10"
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: "easeOut" }}
+              className="w-full max-w-2xl bg-white/5 backdrop-blur-3xl rounded-[3rem] p-8 sm:p-12 shadow-2xl border border-white/10 flex flex-col items-center text-center mt-10 relative z-10"
             >
-              <div className="w-24 h-24 bg-gradient-to-tr from-blue-600 to-cyan-500 rounded-[2rem] flex items-center justify-center text-white mb-8 shadow-lg shadow-blue-500/40 rotate-12">
+              <div className="w-24 h-24 bg-gradient-to-tr from-blue-600 to-purple-600 rounded-[2.5rem] flex items-center justify-center text-white mb-8 shadow-[0_0_40px_rgba(37,99,235,0.4)] rotate-12">
                 <div className="-rotate-12"><FileText size={48} /></div>
               </div>
               
-              <h2 className="text-3xl font-black text-slate-900 tracking-tight mb-2">Tu Currículum Está Listo</h2>
-              <p className="text-slate-500 mb-8 max-w-md">Hemos generado un documento profesional con todos los datos que guardaste en la sección de edición.</p>
+              <h2 className="text-3xl font-black text-white tracking-tight mb-3">Tu Currículum Está Listo</h2>
+              <p className="text-slate-400 mb-10 max-w-md">El documento oficial se ha formateado con el diseño corporativo premium. Listo para descargar.</p>
 
-              {/* Card Resumen */}
-              <div className="bg-slate-50 border border-slate-100 rounded-2xl p-6 w-full mb-8 text-left flex items-center gap-6">
-                {perfil.foto_url ? ( <img src={perfil.foto_url} className="w-16 h-16 rounded-full object-cover shadow-sm shrink-0" /> ) : ( <div className="w-16 h-16 rounded-full bg-slate-200 flex items-center justify-center shrink-0"><User size={24} className="text-slate-400"/></div> )}
-                <div>
-                  <h4 className="font-bold text-slate-900 uppercase">{perfil.nombres} {perfil.apellidos}</h4>
-                  <p className="text-xs text-slate-500 font-mono mt-1">DNI: {dni}</p>
-                  <div className="flex gap-2 mt-2">
-                    <span className="text-[10px] font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded uppercase">{experiencias.length} Experiencias</span>
-                    <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded uppercase">{educacion.length} Estudios</span>
+              <div className="bg-black/40 border border-white/5 rounded-3xl p-6 w-full mb-10 text-left flex flex-col sm:flex-row items-center gap-6 shadow-inner">
+                {perfil.foto_url ? ( <img src={perfil.foto_url} className="w-20 h-20 rounded-full object-cover shadow-lg border-2 border-white/10 shrink-0" /> ) : ( <div className="w-20 h-20 rounded-full bg-slate-800 flex items-center justify-center shrink-0"><User size={30} className="text-slate-500"/></div> )}
+                <div className="text-center sm:text-left w-full">
+                  <h4 className="font-black text-xl text-white uppercase tracking-wide">{perfil.nombres} {perfil.apellidos}</h4>
+                  <p className="text-sm text-blue-400 font-mono mt-1 mb-3">DNI: {dni}</p>
+                  <div className="flex flex-wrap justify-center sm:justify-start gap-2">
+                    <span className="text-[10px] font-bold bg-white/10 text-slate-300 px-3 py-1 rounded-full uppercase border border-white/5">{experiencias.length} Exp.</span>
+                    <span className="text-[10px] font-bold bg-white/10 text-slate-300 px-3 py-1 rounded-full uppercase border border-white/5">{educacion.length} Edu.</span>
+                    {(software.length > 0 || idiomas.length > 0) && <span className="text-[10px] font-bold bg-blue-500/20 text-blue-300 px-3 py-1 rounded-full uppercase border border-blue-500/20">{software.length + idiomas.length} Skills</span>}
+                    {logros.length > 0 && <span className="text-[10px] font-bold bg-amber-500/20 text-amber-300 px-3 py-1 rounded-full uppercase border border-amber-500/20">{logros.length} Logros</span>}
                   </div>
                 </div>
               </div>
 
-              {/* NUEVO: CHECK DE PRIVACIDAD */}
-              <div className="w-full bg-blue-50/50 border border-blue-100 rounded-2xl p-5 mb-8 flex gap-4 text-left cursor-pointer transition-colors hover:bg-blue-50" onClick={() => setAceptaTerminos(!aceptaTerminos)}>
-                <div className={`w-6 h-6 rounded-md flex items-center justify-center border-2 shrink-0 transition-colors mt-0.5 ${aceptaTerminos ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-blue-200 text-transparent'}`}>
+              <div className="w-full bg-blue-900/20 border border-blue-500/30 rounded-2xl p-5 mb-10 flex gap-4 text-left cursor-pointer transition-colors hover:bg-blue-900/40" onClick={() => setAceptaTerminos(!aceptaTerminos)}>
+                <div className={`w-6 h-6 rounded-md flex items-center justify-center border-2 shrink-0 transition-colors mt-0.5 ${aceptaTerminos ? 'bg-blue-500 border-blue-500 text-white' : 'bg-transparent border-blue-500/50 text-transparent'}`}>
                   <CheckCircle2 size={16} />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-blue-900 flex items-center gap-1.5"><ShieldCheck size={16}/> Política de Privacidad de Datos</h4>
-                  <p className="text-xs text-blue-700/70 mt-1 leading-relaxed">Declaro bajo juramento que los datos ingresados son verdaderos. Autorizo a RUAG a almacenar mi información exclusivamente para procesos de reclutamiento y selección, según la Ley de Protección de Datos Personales.</p>
+                  <h4 className="text-sm font-bold text-blue-300 flex items-center gap-1.5"><ShieldCheck size={16}/> Política de Privacidad</h4>
+                  <p className="text-xs text-blue-200/60 mt-1.5 leading-relaxed">Declaro bajo juramento que los datos ingresados son verdaderos. Autorizo a RUAG a almacenar mi información para procesos de selección.</p>
                 </div>
               </div>
 
-              {/* Botón Descargar (Se activa solo si acepta términos) */}
-              <button 
+              <motion.button 
                 onClick={descargarMiCV}
-                className={`group relative inline-flex h-16 items-center justify-center overflow-hidden rounded-2xl px-10 font-medium shadow-xl transition-all w-full sm:w-auto
-                  ${aceptaTerminos ? 'bg-slate-900 text-neutral-50 hover:bg-black hover:scale-105 active:scale-95' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
+                disabled={!aceptaTerminos || downloadStatus !== 'idle'}
+                animate={{ 
+                  width: downloadStatus === 'idle' ? 'auto' : downloadStatus === 'generating' ? '280px' : '220px',
+                  scale: downloadStatus === 'generating' ? 0.95 : 1,
+                  opacity: (!aceptaTerminos && downloadStatus === 'idle') ? 0.5 : 1 
+                }}
+                className={`relative font-black text-lg sm:min-w-[280px] h-16 rounded-2xl transition-all duration-300 overflow-hidden shadow-2xl
+                  ${downloadStatus === 'idle' ? 'hover:-translate-y-1' : ''}
+                  ${downloadStatus === 'success' ? 'bg-emerald-500 shadow-emerald-500/40' : 'bg-[#1e293b] border border-white/10'}
+                `}
               >
-                {aceptaTerminos && <span className="absolute h-0 w-0 rounded-full bg-blue-600 transition-all duration-300 ease-out group-hover:h-56 group-hover:w-full"></span>}
-                <span className="relative flex items-center gap-3 font-bold text-lg tracking-wide"><Download size={22} /> Descargar Mi CV Oficial</span>
-              </button>
+                {downloadStatus === 'generating' && (
+                  <motion.div 
+                    initial={{ width: '0%' }} 
+                    animate={{ width: '100%' }} 
+                    transition={{ duration: 2, ease: "easeInOut" }}
+                    className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-600 to-cyan-400"
+                  />
+                )}
+
+                {downloadStatus === 'idle' && (
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-blue-500">
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>
+                  </div>
+                )}
+
+                <div className="relative flex items-center justify-center gap-3 w-full h-full text-white z-10 px-8">
+                  <AnimatePresence mode="wait">
+                    {downloadStatus === 'idle' && (
+                      <motion.div key="idle" initial={{ y: 15, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -15, opacity: 0 }} className="flex items-center gap-3 w-full justify-center">
+                        <Download size={22} strokeWidth={2.5} /> DESCARGAR CV OFICIAL
+                      </motion.div>
+                    )}
+                    {downloadStatus === 'generating' && (
+                      <motion.div key="generating" initial={{ y: 15, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -15, opacity: 0 }} className="flex items-center gap-3 text-white drop-shadow-md w-full justify-center">
+                        <Loader2 size={22} className="animate-spin" /> GENERANDO PDF...
+                      </motion.div>
+                    )}
+                    {downloadStatus === 'success' && (
+                      <motion.div key="success" initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.5, opacity: 0 }} className="flex items-center gap-2 w-full justify-center">
+                        <CheckCircle2 size={24} strokeWidth={3} /> ¡COMPLETADO!
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </motion.button>
             </motion.div>
           </div>
         )}
