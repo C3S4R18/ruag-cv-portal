@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -10,57 +10,75 @@ import {
   User, Briefcase, GraduationCap, FileBadge, 
   Plus, Trash2, UploadCloud, ChevronLeft, Loader2, ImageIcon, FileText, 
   LayoutDashboard, Download, CheckCircle2, FileDown, ShieldCheck, MapPin, 
-  Zap, Award, X, Globe, Star, Linkedin
+  Zap, Award, X, Globe, Star, Linkedin, Wand2
 } from 'lucide-react'
 
 // --- LIBRERÍAS PARA EL PDF ---
-import { Document, Page, Text, View, StyleSheet, Image as PdfImage, pdf } from '@react-pdf/renderer'
+import { Document, Page, Text, View, StyleSheet, Image as PdfImage, pdf, Link } from '@react-pdf/renderer'
 
-// --- ESTILOS DEL PDF (Plantilla Mautino - 2 Columnas Premium) ---
+// --- ESTILOS DEL PDF (Corregido para evitar desbordamiento y hojas en blanco) ---
 const pdfStyles = StyleSheet.create({
   page: { flexDirection: 'row', backgroundColor: '#ffffff', fontFamily: 'Helvetica' },
-  // COLUMNA IZQUIERDA
-  leftColumn: { width: '32%', backgroundColor: '#f8fafc', padding: 25, borderRight: '1px solid #e2e8f0' },
-  photoContainer: { alignItems: 'center', marginBottom: 25 },
-  photo: { width: 120, height: 120, borderRadius: 60, objectFit: 'cover', marginBottom: 15, border: '4px solid #ffffff' },
-  sectionLeft: { marginBottom: 25 },
-  titleLeft: { fontSize: 11, fontWeight: 'bold', color: '#0f172a', borderBottom: '1px solid #cbd5e1', paddingBottom: 4, marginBottom: 12, letterSpacing: 1.5 },
-  textLeft: { fontSize: 9, color: '#475569', marginBottom: 6, lineHeight: 1.4 },
-  textLeftBold: { fontSize: 9, fontWeight: 'bold', color: '#1e293b', marginBottom: 2 },
   
-  skillBlock: { marginBottom: 8 },
-  skillHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 },
-  skillName: { fontSize: 9, color: '#334155', fontWeight: 'bold' },
+  // COLUMNA IZQUIERDA
+  leftColumn: { width: '32%', backgroundColor: '#f8fafc', paddingHorizontal: 20, paddingTop: 30, paddingBottom: 20, borderRight: '1px solid #e2e8f0' },
+  photoContainer: { alignItems: 'center', marginBottom: 20 },
+  photo: { width: 100, height: 100, borderRadius: 50, objectFit: 'cover', marginBottom: 10, border: '3px solid #ffffff' }, // Foto ligeramente más pequeña
+  sectionLeft: { marginBottom: 20 },
+  titleLeft: { fontSize: 10, fontWeight: 'bold', color: '#0f172a', borderBottom: '1px solid #cbd5e1', paddingBottom: 4, marginBottom: 10, letterSpacing: 1.2 },
+  textLeft: { fontSize: 8.5, color: '#475569', marginBottom: 4, lineHeight: 1.3 },
+  textLeftBold: { fontSize: 8.5, fontWeight: 'bold', color: '#1e293b', marginBottom: 2 },
+  
+  skillBlock: { marginBottom: 6 },
+  skillHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 },
+  skillName: { fontSize: 8.5, color: '#334155', fontWeight: 'bold' },
   barBg: { height: 4, backgroundColor: '#e2e8f0', borderRadius: 2, overflow: 'hidden' },
   barFill: { height: '100%', backgroundColor: '#3b82f6', borderRadius: 2 },
 
   // COLUMNA DERECHA
-  rightColumn: { width: '68%', padding: 35, paddingTop: 40 },
-  headerRight: { marginBottom: 25 },
-  nameRight: { fontSize: 26, fontWeight: 'bold', color: '#0f172a', textTransform: 'uppercase', letterSpacing: -0.5 },
-  titleRightMain: { fontSize: 13, fontWeight: 'bold', color: '#2563eb', marginTop: 5, letterSpacing: 2, textTransform: 'uppercase' },
-  colegiatura: { fontSize: 10, color: '#64748b', marginTop: 4, fontWeight: 'bold' },
+  rightColumn: { width: '68%', paddingHorizontal: 30, paddingTop: 30, paddingBottom: 20 },
+  headerRight: { marginBottom: 20 },
+  nameRight: { fontSize: 24, fontWeight: 'bold', color: '#0f172a', textTransform: 'uppercase', letterSpacing: -0.5 },
+  titleRightMain: { fontSize: 12, fontWeight: 'bold', color: '#2563eb', marginTop: 4, letterSpacing: 1.5, textTransform: 'uppercase' },
+  colegiatura: { fontSize: 9, color: '#64748b', marginTop: 4, fontWeight: 'bold' },
   
-  contactRow: { flexDirection: 'row', gap: 15, marginTop: 12, flexWrap: 'wrap' },
-  contactItem: { fontSize: 9, color: '#475569' },
+  contactRow: { flexDirection: 'row', gap: 12, marginTop: 10, flexWrap: 'wrap' },
+  contactItem: { fontSize: 8.5, color: '#475569' },
 
-  sectionRight: { marginBottom: 20 },
-  titleRight: { fontSize: 12, fontWeight: 'bold', color: '#0f172a', borderBottom: '2px solid #2563eb', paddingBottom: 4, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 },
-  textBodyRight: { fontSize: 9.5, color: '#334155', lineHeight: 1.6, textAlign: 'justify' },
+  sectionRight: { marginBottom: 18 },
+  titleRight: { fontSize: 11, fontWeight: 'bold', color: '#0f172a', borderBottom: '2px solid #2563eb', paddingBottom: 3, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 1 },
+  textBodyRight: { fontSize: 9, color: '#334155', lineHeight: 1.5, textAlign: 'justify' },
   
-  itemBlock: { marginBottom: 14 },
+  itemBlock: { marginBottom: 12 },
   itemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 2 },
-  itemTitle: { fontSize: 11, fontWeight: 'bold', color: '#0f172a', width: '70%' },
-  itemDate: { fontSize: 9, color: '#2563eb', fontWeight: 'bold', width: '30%', textAlign: 'right' },
-  itemSubtitle: { fontSize: 10, color: '#64748b', marginBottom: 4, fontStyle: 'italic' },
+  itemTitle: { fontSize: 10, fontWeight: 'bold', color: '#0f172a', width: '70%' },
+  itemDate: { fontSize: 8.5, color: '#2563eb', fontWeight: 'bold', width: '30%', textAlign: 'right' },
+  itemSubtitle: { fontSize: 9, color: '#64748b', marginBottom: 3, fontStyle: 'italic' },
   
-  bulletPoint: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4 },
-  bulletDot: { fontSize: 10, color: '#2563eb', marginRight: 5, marginTop: -1 },
-  bulletText: { fontSize: 9.5, color: '#475569', lineHeight: 1.5, flex: 1 },
+  bulletPoint: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 3 },
+  bulletDot: { fontSize: 9, color: '#2563eb', marginRight: 5, marginTop: -1 },
+  bulletText: { fontSize: 9, color: '#475569', lineHeight: 1.4, flex: 1 },
+
+  // ANEXOS
+  pageAnexos: { backgroundColor: '#ffffff', padding: 40, fontFamily: 'Helvetica' },
+  anexoHeader: { fontSize: 18, fontWeight: 'bold', color: '#0f172a', borderBottom: '2px solid #2563eb', paddingBottom: 10, marginBottom: 20, textTransform: 'uppercase' },
+  anexoCard: { backgroundColor: '#f8fafc', padding: 20, borderRadius: 8, marginBottom: 25, border: '1px solid #e2e8f0', alignItems: 'center' },
+  anexoTitle: { fontSize: 14, fontWeight: 'bold', color: '#1e293b', marginBottom: 4, textAlign: 'center' },
+  anexoInst: { fontSize: 11, color: '#64748b', marginBottom: 15, textAlign: 'center' },
+  anexoImage: { width: '100%', maxHeight: 450, objectFit: 'contain', border: '1px solid #cbd5e1' },
+  anexoLink: { fontSize: 10, color: '#2563eb', marginTop: 15, textDecoration: 'none', fontWeight: 'bold' }
 })
+
+// Función inteligente para detectar si una URL es de una imagen
+const isImageUrl = (url: string) => {
+  if (!url) return false;
+  const cleanUrl = url.split('?')[0].toLowerCase();
+  return cleanUrl.match(/\.(jpeg|jpg|gif|png|webp|bmp)$/) != null;
+}
 
 const CVPdfDocument = ({ data }: { data: any }) => (
   <Document>
+    {/* PÁGINA 1: EL CV PRINCIPAL */}
     <Page size="A4" style={pdfStyles.page}>
       
       {/* COLUMNA IZQUIERDA */}
@@ -162,6 +180,39 @@ const CVPdfDocument = ({ data }: { data: any }) => (
         </View>
       </View>
     </Page>
+
+    {/* PÁGINA(S) DE ANEXOS Y CERTIFICADOS */}
+    {data.certificados && data.certificados.length > 0 && (
+      <Page size="A4" style={pdfStyles.pageAnexos}>
+        <Text style={pdfStyles.anexoHeader}>Anexos y Documentos Verificados</Text>
+        <Text style={{ fontSize: 10, color: '#64748b', marginBottom: 20 }}>
+          Los siguientes documentos han sido adjuntados por el postulante como respaldo de su experiencia y educación.
+        </Text>
+        
+        {data.certificados.map((cert: any, i: number) => {
+          const isImage = isImageUrl(cert.url_archivo);
+          
+          return (
+            <View key={i} style={pdfStyles.anexoCard} wrap={false}>
+              <Text style={pdfStyles.anexoTitle}>{cert.nombre || 'Documento Adjunto'}</Text>
+              <Text style={pdfStyles.anexoInst}>Institución/Emisor: {cert.institucion || 'No especificado'}</Text>
+              
+              {/* SI ES IMAGEN, LA DIBUJA EN EL PDF */}
+              {isImage && cert.url_archivo && (
+                <PdfImage src={cert.url_archivo} style={pdfStyles.anexoImage} />
+              )}
+              
+              {/* SIEMPRE DEJA EL LINK COMO RESPALDO O SI ES UN PDF */}
+              {cert.url_archivo && (
+                <Link src={cert.url_archivo} style={pdfStyles.anexoLink}>
+                  {isImage ? 'Haz clic aquí para ver archivo original completo' : '📄 HAZ CLIC AQUÍ PARA VER EL ARCHIVO PDF ADJUNTO'}
+                </Link>
+              )}
+            </View>
+          )
+        })}
+      </Page>
+    )}
   </Document>
 )
 
@@ -207,6 +258,52 @@ const AnimatedSaveButton = ({ onClick, isSaving, isSaved }: { onClick: () => voi
   )
 }
 
+// --- LOADER A PANTALLA COMPLETA (CYBER/AI PREMIUM) ---
+const MagiaIALoader = () => {
+  const [loadingText, setLoadingText] = useState("Procesando documento...");
+  
+  useEffect(() => {
+    const texts = [
+      "Leyendo PDF...",
+      "Extrayendo experiencia laboral...",
+      "Validando educación y títulos...",
+      "Identificando competencias clave...",
+      "Casi listo..."
+    ];
+    let i = 0;
+    const interval = setInterval(() => {
+      setLoadingText(texts[i]);
+      i = (i + 1) % texts.length;
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-slate-950/95 backdrop-blur-lg overflow-hidden"
+    >
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(37,99,235,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(37,99,235,0.05)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)]" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-600/20 rounded-full blur-[100px] animate-pulse" />
+      <div className="relative w-48 h-64 border-2 border-blue-500/30 rounded-xl bg-slate-900/50 flex items-center justify-center overflow-hidden shadow-[0_0_50px_rgba(37,99,235,0.2)]">
+        <FileText size={60} className="text-slate-600 opacity-50" />
+        <motion.div 
+          animate={{ y: [-130, 130] }}
+          transition={{ repeat: Infinity, duration: 1.5, ease: "linear", repeatType: "reverse" }}
+          className="absolute w-full h-1 bg-blue-400 shadow-[0_0_20px_#60A5FA]"
+        />
+        <Wand2 size={24} className="absolute top-4 right-4 text-blue-400 animate-pulse" />
+      </div>
+      <h2 className="mt-10 text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 tracking-widest uppercase">
+        GEMINI 2.5 FLASH
+      </h2>
+      <p className="mt-4 text-blue-200/70 font-mono text-sm tracking-widest uppercase animate-pulse">
+        {loadingText}
+      </p>
+    </motion.div>
+  )
+}
+
 type Experiencia = { id: string, empresa: string, cargo: string, fecha_inicio: string, fecha_fin: string, descripcion: string }
 type Educacion = { id: string, institucion: string, titulo: string, nivel: string, anio_inicio: string, anio_fin: string }
 type Certificado = { id: string, nombre: string, institucion: string, url_archivo: string }
@@ -226,17 +323,17 @@ export default function ConstructorCV() {
   const [uploadingFile, setUploadingFile] = useState(false)
   const [activeTab, setActiveTab] = useState<'perfil' | 'experiencia' | 'educacion' | 'competencias' | 'logros' | 'certificados'>('perfil')
 
+  const [isImportingIA, setIsImportingIA] = useState(false)
+  const fileInputIARef = useRef<HTMLInputElement>(null)
+
   const [perfil, setPerfil] = useState({ id: '', nombres: '', apellidos: '', correo: '', telefono: '', direccion: '', perfil_profesional: '', foto_url: '', titulo_profesional: '', linkedin: '', colegiatura: '' })
   const [experiencias, setExperiencias] = useState<Experiencia[]>([])
   const [educacion, setEducacion] = useState<Educacion[]>([])
   const [certificados, setCertificados] = useState<Certificado[]>([])
-  
-  // NUEVOS ESTADOS COMPLEJOS
   const [software, setSoftware] = useState<Skill[]>([])
   const [idiomas, setIdiomas] = useState<Skill[]>([])
   const [logros, setLogros] = useState<Logro[]>([])
   
-  // Inputs temporales
   const [newSoftName, setNewSoftName] = useState('')
   const [newSoftLevel, setNewSoftLevel] = useState('Intermedio')
   const [newLangName, setNewLangName] = useState('')
@@ -246,7 +343,6 @@ export default function ConstructorCV() {
   const [aceptaTerminos, setAceptaTerminos] = useState(false)
   const [progresoCV, setProgresoCV] = useState(0)
 
-  // ESTADO DEL BOTÓN DE DESCARGA
   const [downloadStatus, setDownloadStatus] = useState<'idle' | 'generating' | 'success'>('idle')
 
   useEffect(() => { cargarDatos() }, [])
@@ -292,6 +388,84 @@ export default function ConstructorCV() {
       toast.error('Error al cargar tu información.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleImportarConIA = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setIsImportingIA(true)
+
+    try {
+      const base64String = await new Promise<string>((resolve) => {
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          const result = reader.result as string
+          resolve(result.split(',')[1]) 
+        }
+        reader.readAsDataURL(file)
+      })
+
+      const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY
+      if (!apiKey) throw new Error("Falta la API Key de Gemini en las variables de entorno.")
+
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: `Extrae la información de este Curriculum Vitae en formato PDF y devuélvela EXACTAMENTE en el siguiente formato JSON, sin markdown ni comillas extras:
+              {
+                "nombres": "", "apellidos": "", "correo": "", "telefono": "", "direccion": "",
+                "titulo_profesional": "", "perfil_profesional": "", "linkedin": "", "colegiatura": "",
+                "experiencias": [{"cargo": "", "empresa": "", "fecha_inicio": "", "fecha_fin": "", "descripcion": ""}],
+                "educacion": [{"institucion": "", "titulo": "", "nivel": "Universitario", "anio_inicio": "", "anio_fin": ""}],
+                "software": [{"nombre": "", "nivel": "Intermedio", "porcentaje": 60}],
+                "idiomas": [{"nombre": "", "nivel": "Básico", "porcentaje": 30}],
+                "logros": [{"descripcion": ""}]
+              }` },
+              { inline_data: { mime_type: "application/pdf", data: base64String } }
+            ]
+          }]
+        })
+      })
+
+      const apiResult = await response.json()
+      if (apiResult.error) throw new Error(apiResult.error.message)
+
+      let textResult = apiResult.candidates[0].content.parts[0].text
+      textResult = textResult.replace(/```json/g, '').replace(/```/g, '').trim()
+      
+      const dataAnalizada = JSON.parse(textResult)
+
+      setPerfil(prev => ({
+        ...prev,
+        nombres: dataAnalizada.nombres || prev.nombres,
+        apellidos: dataAnalizada.apellidos || prev.apellidos,
+        correo: dataAnalizada.correo || prev.correo,
+        telefono: dataAnalizada.telefono || prev.telefono,
+        direccion: dataAnalizada.direccion || prev.direccion,
+        titulo_profesional: dataAnalizada.titulo_profesional || prev.titulo_profesional,
+        perfil_profesional: dataAnalizada.perfil_profesional || prev.perfil_profesional,
+        linkedin: dataAnalizada.linkedin || prev.linkedin,
+        colegiatura: dataAnalizada.colegiatura || prev.colegiatura,
+      }))
+
+      if (dataAnalizada.experiencias?.length > 0) setExperiencias(dataAnalizada.experiencias.map((e: any) => ({ ...e, id: crypto.randomUUID() })))
+      if (dataAnalizada.educacion?.length > 0) setEducacion(dataAnalizada.educacion.map((e: any) => ({ ...e, id: crypto.randomUUID() })))
+      if (dataAnalizada.software?.length > 0) setSoftware(dataAnalizada.software.map((e: any) => ({ ...e, id: crypto.randomUUID() })))
+      if (dataAnalizada.idiomas?.length > 0) setIdiomas(dataAnalizada.idiomas.map((e: any) => ({ ...e, id: crypto.randomUUID() })))
+      if (dataAnalizada.logros?.length > 0) setLogros(dataAnalizada.logros.map((e: any) => ({ ...e, id: crypto.randomUUID() })))
+
+      toast.success("¡Tu CV ha sido importado con éxito! Revisa los datos.")
+    } catch (error) {
+      console.error(error)
+      toast.error("Error al procesar el PDF. Intenta con otro archivo.")
+    } finally {
+      setIsImportingIA(false)
+      if (fileInputIARef.current) fileInputIARef.current.value = ''
     }
   }
 
@@ -409,6 +583,11 @@ export default function ConstructorCV() {
     <div className="flex h-screen bg-gray-50 font-sans text-slate-900 overflow-hidden">
       <Toaster position="top-center" richColors />
 
+      {/* PANTALLA DE CARGA DE IA */}
+      <AnimatePresence>
+        {isImportingIA && <MagiaIALoader />}
+      </AnimatePresence>
+
       <aside className="w-20 lg:w-64 bg-white border-r border-gray-100 flex flex-col h-full z-20 shadow-sm shrink-0 transition-all">
         <div className="h-20 flex items-center justify-center lg:justify-start lg:px-6 border-b border-gray-100">
           <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-md"><FileText size={20}/></div>
@@ -434,7 +613,8 @@ export default function ConstructorCV() {
           <>
             <header className="bg-white/80 backdrop-blur-xl border-b border-gray-100 sticky top-0 z-10 flex flex-col">
               <div className="px-6 lg:px-10 h-20 flex items-center justify-between">
-                <div className="flex flex-col gap-1 w-1/2 md:w-1/3">
+                
+                <div className="flex flex-col gap-1 w-1/3 md:w-1/4">
                   <h2 className="text-xl font-extrabold text-slate-900 tracking-tighter">Constructor de CV</h2>
                   <div className="flex items-center gap-3">
                     <div className={`h-2 w-full bg-gray-100 rounded-full overflow-hidden shadow-inner ${progresoCV === 100 ? 'ring-2 ring-emerald-400/50' : ''}`}>
@@ -467,7 +647,54 @@ export default function ConstructorCV() {
             </header>
 
             <div className="flex-1 overflow-y-auto p-6 lg:p-10 scrollbar-thin scrollbar-thumb-gray-200">
-              <div className="max-w-4xl mx-auto pb-20">
+              <div className="max-w-4xl mx-auto pb-20 relative">
+
+                {/* BOTÓN MÁGICO DE IA - REDISEÑADO AL ESTILO APPLE/VERCEL */}
+                <div className="mb-8 w-full">
+                  <input 
+                    type="file" 
+                    accept="application/pdf" 
+                    className="hidden" 
+                    ref={fileInputIARef}
+                    onChange={handleImportarConIA}
+                  />
+                  <motion.button 
+                    onClick={() => fileInputIARef.current?.click()}
+                    disabled={isImportingIA}
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="group relative w-full overflow-hidden rounded-[24px] bg-white border border-gray-200 p-1 flex items-center shadow-sm hover:shadow-md transition-all"
+                  >
+                    {/* Borde Animado (Gradiente que da la vuelta) */}
+                    <div className="absolute inset-0 bg-[conic-gradient(from_0deg_at_50%_50%,#e2e8f0_0%,#3b82f6_50%,#8b5cf6_100%)] opacity-0 group-hover:opacity-20 animate-[spin_4s_linear_infinite]" />
+                    
+                    <div className="relative w-full h-full bg-white rounded-[22px] flex flex-col sm:flex-row items-center gap-5 p-5">
+                      <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-50 to-indigo-50 flex items-center justify-center text-blue-600 border border-blue-100 shadow-inner group-hover:scale-110 transition-transform">
+                        {isImportingIA ? <Loader2 size={28} className="animate-spin text-blue-500" /> : <Wand2 size={28} />}
+                      </div>
+
+                      <div className="flex-1 text-center sm:text-left">
+                        <h3 className="text-lg font-black text-slate-900 tracking-tight flex items-center justify-center sm:justify-start gap-2">
+                          {isImportingIA ? 'La IA está leyendo tu currículum...' : 'Relleno Automático con Inteligencia Artificial'}
+                          {!isImportingIA && <span className="bg-blue-100 text-blue-700 text-[10px] uppercase font-black px-2 py-0.5 rounded-md tracking-widest">BETA</span>}
+                        </h3>
+                        <p className="text-sm text-slate-500 mt-0.5">
+                          {isImportingIA 
+                            ? 'Por favor, no cierres esta ventana.' 
+                            : 'Sube tu PDF antiguo y Gemini 2.5 completará todo este formulario por ti en segundos.'}
+                        </p>
+                      </div>
+
+                      <div className="shrink-0 w-full sm:w-auto">
+                        <div className="w-full sm:w-auto bg-slate-900 text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 group-hover:bg-blue-600 transition-colors shadow-md">
+                          <UploadCloud size={18} />
+                          {isImportingIA ? 'Subiendo...' : 'Subir mi CV en PDF'}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.button>
+                </div>
+
                 <AnimatePresence mode="wait">
                   
                   {activeTab === 'perfil' && (
@@ -660,7 +887,7 @@ export default function ConstructorCV() {
 
                   {activeTab === 'certificados' && (
                     <motion.div key="certificados" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
-                      <div className="bg-blue-50 text-blue-800 p-5 rounded-2xl flex gap-3 text-sm font-medium border border-blue-100"><FileBadge size={20} className="shrink-0 mt-0.5 text-blue-600" /><p>Adjunta fotos o PDFs de tus diplomas y constancias. El área de Recursos Humanos revisará estos documentos.</p></div>
+                      <div className="bg-blue-50 text-blue-800 p-5 rounded-2xl flex gap-3 text-sm font-medium border border-blue-100"><FileBadge size={20} className="shrink-0 mt-0.5 text-blue-600" /><p>Adjunta fotos o PDFs de tus diplomas y constancias. Aparecerán automáticamente en la sección "Anexos" de tu Currículum generado.</p></div>
                       {certificados.map((cert) => (
                         <div key={cert.id} className="bg-white p-6 sm:p-8 rounded-[2rem] border border-gray-100 shadow-sm relative flex flex-col md:flex-row gap-8 items-center">
                           <button onClick={() => setCertificados(certificados.filter(c => c.id !== cert.id))} className="absolute top-6 right-6 p-2.5 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-xl transition-colors"><Trash2 size={18} /></button>
@@ -679,7 +906,7 @@ export default function ConstructorCV() {
                             ) : (
                               <label className="h-32 rounded-2xl border-2 border-dashed border-gray-300 hover:border-blue-500 hover:bg-blue-50 flex flex-col items-center justify-center text-slate-400 hover:text-blue-600 cursor-pointer transition-all">
                                 <UploadCloud size={32} className="mb-3" />
-                                <span className="text-xs font-bold uppercase tracking-widest">Subir</span>
+                                <span className="text-xs font-bold uppercase tracking-widest">Subir PDF/IMG</span>
                                 <input type="file" accept="image/*,.pdf" className="hidden" onChange={(e) => handleUploadFile(e, 'certificado', cert.id)} />
                               </label>
                             )}
@@ -728,6 +955,7 @@ export default function ConstructorCV() {
                     <span className="text-[10px] font-bold bg-white/10 text-slate-300 px-3 py-1 rounded-full uppercase border border-white/5">{educacion.length} Edu.</span>
                     {(software.length > 0 || idiomas.length > 0) && <span className="text-[10px] font-bold bg-blue-500/20 text-blue-300 px-3 py-1 rounded-full uppercase border border-blue-500/20">{software.length + idiomas.length} Skills</span>}
                     {logros.length > 0 && <span className="text-[10px] font-bold bg-amber-500/20 text-amber-300 px-3 py-1 rounded-full uppercase border border-amber-500/20">{logros.length} Logros</span>}
+                    {certificados.length > 0 && <span className="text-[10px] font-bold bg-emerald-500/20 text-emerald-300 px-3 py-1 rounded-full uppercase border border-emerald-500/20">{certificados.length} Anexos</span>}
                   </div>
                 </div>
               </div>
@@ -757,9 +985,7 @@ export default function ConstructorCV() {
               >
                 {downloadStatus === 'generating' && (
                   <motion.div 
-                    initial={{ width: '0%' }} 
-                    animate={{ width: '100%' }} 
-                    transition={{ duration: 2, ease: "easeInOut" }}
+                    initial={{ width: '0%' }} animate={{ width: '100%' }} transition={{ duration: 2, ease: "easeInOut" }}
                     className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-600 to-cyan-400"
                   />
                 )}
