@@ -390,6 +390,7 @@ export default function ConstructorCV() {
     if (!file) return
 
     setIsImportingIA(true)
+    const toastId = toast.loading("✨ IA Analizando tu CV capa por capa...")
 
     try {
       const base64String = await new Promise<string>((resolve) => {
@@ -410,7 +411,17 @@ export default function ConstructorCV() {
         body: JSON.stringify({
           contents: [{
             parts: [
-              { text: `Extrae la información de este Curriculum Vitae en formato PDF y devuélvela EXACTAMENTE en el siguiente formato JSON, sin markdown ni comillas extras. MUY IMPORTANTE: NO extraigas ni modifiques "nombres" ni "apellidos", déjalos vacíos. Si el documento contiene imágenes de certificados, agrégalos en el array de certificados con un nombre, pero el url_archivo debe ir vacío.
+              { text: `Eres un experto en Recursos Humanos. Analiza este Curriculum Vitae minuciosamente. Es un documento complejo que puede tener docenas de páginas.
+              Tu tarea es extraer ABSOLUTAMENTE TODA la información y estructurarla ESTRICTAMENTE en el siguiente formato JSON.
+              
+              REGLAS VITALES OBLIGATORIAS:
+              1. EXTRAE TODAS LAS EXPERIENCIAS: Sé exhaustivo. Si una persona trabajó en una empresa matriz pero especifica haber trabajado en múltiples "Obras" o "Proyectos" distintos dentro de esa etapa, DEBES crear un objeto separado en el array "experiencias" para CADA OBRA/PROYECTO. El campo "empresa" puede ser "Nombre Empresa Matriz - Nombre Obra". No omitas NINGUNA.
+              2. NOMBRES Y APELLIDOS: MUY IMPORTANTE: NO extraigas ni modifiques "nombres" ni "apellidos", déjalos vacíos (""). Tu cuenta ya tiene esos datos.
+              3. CERTIFICADOS / ANEXOS: Al final del documento suele haber imágenes de diplomas, constancias de trabajo, o certificados. Identifícalos visualmente y crea un elemento en la lista "certificados" por cada uno (nombre e institución). Deja "url_archivo" vacío ("").
+              4. SOFTWARE E IDIOMAS: Asigna un porcentaje aproximado (Básico=30, Intermedio=60, Avanzado=85, Experto=100).
+              5. Devuelve ÚNICAMENTE un JSON válido, sin markdown (\`\`\`json), sin texto adicional al principio ni al final.
+
+              Formato JSON requerido:
               {
                 "nombres": "", "apellidos": "", "correo": "", "telefono": "", "direccion": "",
                 "titulo_profesional": "", "perfil_profesional": "", "linkedin": "", "colegiatura": "",
@@ -431,7 +442,14 @@ export default function ConstructorCV() {
       if (apiResult.error) throw new Error(apiResult.error.message)
 
       let textResult = apiResult.candidates[0].content.parts[0].text
-      textResult = textResult.replace(/```json/g, '').replace(/```/g, '').trim()
+      
+      // PARSEO DE JSON A PRUEBA DE BALAS
+      const jsonMatch = textResult.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+          textResult = jsonMatch[0];
+      } else {
+          textResult = textResult.replace(/```json/g, '').replace(/```/g, '').trim()
+      }
       
       const dataAnalizada = JSON.parse(textResult)
 
@@ -462,10 +480,10 @@ export default function ConstructorCV() {
         setCertificados(nuevosCertificados)
       }
 
-      toast.success("¡Tu CV ha sido importado con éxito! Revisa los datos.")
+      toast.success("¡Tu CV ha sido importado con éxito! Revisa los datos.", { id: toastId })
     } catch (error) {
       console.error(error)
-      toast.error("Error al procesar el PDF. Intenta con otro archivo.")
+      toast.error("Error al procesar el PDF. Intenta con otro archivo.", { id: toastId })
     } finally {
       setIsImportingIA(false)
       if (fileInputIARef.current) fileInputIARef.current.value = ''
