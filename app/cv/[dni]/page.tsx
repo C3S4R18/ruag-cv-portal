@@ -594,8 +594,13 @@ export default function ConstructorCV() {
   }
 
   const distritos = [
-    "Callao Cercado", "Bellavista", "Carmen de la Legua", "La Perla", "La Punta", "Ventanilla", "Mi Perú",
-    "Lima Cercado", "San Miguel", "Magdalena del Mar", "Pueblo Libre", "Los Olivos", "San Martín de Porres", "San Isidro", "Miraflores", "Surco"
+    "Ancón", "Ate", "Barranco", "Bellavista", "Breña", "Callao", "Carabayllo", "Carmen de la Legua", "Chaclacayo", "Chorrillos", 
+    "Cieneguilla", "Comas", "El Agustino", "Independencia", "Jesús María", "La Molina", "La Perla", "La Punta", "La Victoria", 
+    "Lima Cercado", "Lince", "Los Olivos", "Lurigancho-Chosica", "Lurín", "Magdalena del Mar", "Mi Perú", "Miraflores", 
+    "Pachacámac", "Pucusana", "Pueblo Libre", "Puente Piedra", "Punta Hermosa", "Punta Negra", "Rímac", "San Bartolo", 
+    "San Borja", "San Isidro", "San Juan de Lurigancho", "San Juan de Miraflores", "San Luis", "San Martín de Porres", 
+    "San Miguel", "Santa Anita", "Santa María del Mar", "Santa Rosa", "Santiago de Surco", "Surquillo", "Ventanilla", 
+    "Villa El Salvador", "Villa María del Triunfo"
   ]
 
   if (loading) return <div className="h-screen flex items-center justify-center bg-gray-50"><Loader2 className="animate-spin text-blue-600" size={40} /></div>
